@@ -1,0 +1,11 @@
+# Teleport the state of q0 to q2. The input state is set by the caller.
+qubits 3
+bits 2
+h q1
+cx q1 q2
+cx q0 q1
+h q0
+measure q0 -> c0
+measure q1 -> c1
+if c1 { x q2 }
+if c0 { z q2 }

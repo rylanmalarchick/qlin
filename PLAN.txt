@@ -187,7 +187,9 @@ Time estimates assume about 10 focused hours per week.
          exit edge.
        - Check S1 and S2 for every outcome on small m by the trace
          enumerator and the simulator. Cross-check with MQT QCEC, which
-         handles dynamic circuits (Burgholzer and Wille, 2106.01099).
+         handles dynamic circuits (Burgholzer and Wille, 2106.01099), or
+         with Hybrid Path-Sums (2604.24578), which also covers the defer
+         rewrite from classical to quantum control.
        Exit test: sweep t from 0 to m on every benchmark. Report fast
        path size, exit probability, and expected latency per t.
 

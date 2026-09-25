@@ -273,6 +273,22 @@ Classic PL relatives (cite details not yet checked against the papers):
     feedforward, where qlin tries to remove runtime decisions. Not a
     competitor.
 
+2604.24578  Hybrid Path-Sums for hybrid quantum programs. Chareton, Issa,
+            Nguyen, Blanco, Bardin. PACMPL 2026.  [abstract]
+    Symbolic states for programs with BOTH classical and quantum
+    control, measurement, and classical data. Rewrite rules, an
+    assertion language for program equivalence, proofs of correctness,
+    and a symbolic execution engine.
+    -> Candidate checker for S1 and S2, and for the defer rewrite
+       (classical control to quantum control), which QCEC may not cover.
+       Found by a citation walk (lit cites), not by keyword search.
+Hurwitz, Datta, Kole, Drechsler. "Is simulation the only alternative for
+    effective verification of dynamic quantum circuits?" 2024, LNCS,
+    doi 10.1007/978-3-031-62076-8_13. No abstract in OpenAlex. Not read.
+Seen in a citation walk from 2311.12772, not read: CLINE (control-line
+    encoding for quantum control flow, 2026), "Compositional quantum
+    control flow with efficient compilation in Qunity" (PACMPL 2025).
+
 Novelty check, run 2026-09-25, two passes.
   Pass 1: web search plus arXiv abstracts. No match.
   Pass 2: arXiv abstract search, with a control query that found

@@ -1,21 +1,103 @@
 qlin PLAN
 =========
-Started 2026-09-23. Skeleton set up 2026-09-25. Research pass and full
-rewrite 2026-09-25. This is the single living planning doc. Update it in
-place.
+Started 2026-09-23. Research pass 2026-09-25. Plan v2 (objective, scope,
+gates) 2026-09-25.
 
-Read first: notes/prior-work.txt (sources, baselines, open slots).
+Doc protocol
+  - This file is the single living planning and status doc. Update it in
+    place. Add dated entries to the LOG (section 13), newest first.
+  - Status truth, in order of detail: CURRENT FOCUS (section 1), the
+    claims ledger (section 9), the LOG (section 13). No fourth status list.
+  - The code in src/ is the implementation truth. This file records it and
+    never contradicts it.
+  - Reference docs stay separate: notes/prior-work.txt (literature,
+    baselines, device numbers).
+  - Repo files never point at this file. README.md and AGENTS.md describe
+    how anyone works with the crate, with no planning content.
 
 
 ONE LINE
 --------
-Compile a dynamic circuit so the runtime-decided part is as small as
-possible. Precompile a fast path for measurement outcomes inside a
-budget, with a correct generic fallback for the rest.
+Compile a dynamic circuit so that its expected shot cost is as low as
+possible. Precompile a fast path for the likely measurement outcomes
+inside a budget, keep a correct generic fallback for the rest, and prove
+a lower bound on what must stay runtime-decided.
 
 
-FRAMING (matches the 2026-09-25 email to Charles Yuan)
---------------------------------------------------------
+1. CURRENT FOCUS (the handoff. Update it when it changes.)
+==========================================================
+  STATE 2026-09-25. Plan v2 written. No code yet beyond the crate root.
+  Next: Phase 0, step 0.1 (commit the skeleton, add README.md and
+  AGENTS.md). Then step 0.2 (IR types).
+
+
+2. OBJECTIVE AND DEFINITION OF DONE
+===================================
+Objective (decided 2026-09-25): a portfolio result for PL-side quantum
+research, built to show Charles Yuan (UW-Madison) and to use in research
+applications. A clean, checked result plus a write-up is the goal. A
+venue is secondary. Gate 3 decides if the write-up also goes to a venue.
+
+No calendar deadline. Progress is measured by the phase gates in
+section 6. Estimated total: about 16 weeks at 10 focused hours per week.
+
+DONE means all of D1 to D5 are true:
+  D1  Public repo. The qlin crate builds, `cargo test` passes, README.md
+      says what it is and how to run it.
+  D2  The pass runs end to end on every benchmark in the section 7 set:
+      import, analysis, fast path, fallback, and output.
+  D3  Soundness is checked for every benchmark with m <= 12 measured
+      bits, for every outcome, by the method in section 8. The check
+      fails on a planted wrong rewrite (a test shows this).
+  D4  One results table: every benchmark times every baseline, with the
+      section 7 metrics, and a t-sweep per benchmark. Every number
+      carries a label: modeled, emulated, or measured.
+  D5  A write-up of 8 to 12 pages (arXiv-note style). It states the
+      problem, the core bound, the soundness argument, the results, and
+      where the budget does not pay. Every claim carries its status from
+      section 9.
+
+Stretch (not required for done):
+  X1  Lean model of S1 to S3 for the toy IR (Phase 5).
+  X2  Measured shot times on IBM Heron.
+  X3  Workshop submission (PLanQC or similar), if Gate 3 says yes.
+
+
+3. SCOPE
+========
+IN scope:
+  - A toy IR: gate, measure, reset, if/else on a bit expression, bounded
+    loop, loop with a measured exit bit (unrolled up to t failed tries).
+  - The move set: hoist, sink, merge, defer, unroll (section 4).
+  - Outcome budget M_t around one reference outcome r.
+  - Outcome probabilities p(b) from a per-bit prior. A noise-model prior
+    for syndrome bits is allowed as a second source.
+  - A device cost model with the parameters in Phase 4. Shot latency is
+    the objective. Error is a second, separate axis.
+  - Import of the jeff subset the toy IR covers.
+  - Baselines: bqcp, Qiskit transpiler with control flow, TKET.
+  - Devices: Quantinuum Helios-1E emulator or Selene (required). IBM
+    Heron through the free open plan (stretch X2).
+
+OUT of scope (do not build, cite instead):
+  - Qubit routing and layout. The layout is an input and stays fixed.
+    Compensation code is classical only in v1. Cite DynamiQ (2609.08075)
+    for layout reconciliation across branches.
+  - Pulse-level control and controller firmware.
+  - Real-time decoders. Only the lookup-table decoders from dynamarq.
+  - Symbolic gate angles and parametric compilation.
+  - Unbounded loops.
+  - QCCD transport modeling beyond one scalar cost term.
+  - Anything from the unreleased LANL work: no aro, no affine rules over
+    a parameter box, no sampling certificate. (Binding.)
+  - Paid hardware time. Budget for device access is $0.
+
+
+4. FRAMING, TERMS, PROBLEM
+==========================
+
+Framing (matches the 2026-09-25 email to Charles Yuan)
+------------------------------------------------------
 The compiler treats mid-circuit measurement outcomes as an uncertainty
 set. It precompiles and optimizes a fast path for every outcome inside a
 budget. A correct generic fallback covers the rest. The runtime decides
@@ -45,32 +127,20 @@ Three ways to say what this is, for three audiences:
 
 Link to own prior work: specqec (arXiv:2607.13062) does runtime
 predict/verify/recover for window decoding. qlin is the compile-time
-side of the same idea: decide ahead what is predictable, keep a correct
-path for the rest.
+side of the same idea.
 
-
-SCOPE RULE (binding)
---------------------
-Nothing from the unreleased LANL work: no aro, no affine rules over a
-parameter box, no sampling certificate. The uncertainty set is over
-measurement outcomes only: a simple budget or tolerance.
-
-
-TERMS
+Terms
 -----
   b              the measured-bit vector, b in {0,1}^m, revealed one bit
                  at a time as the program runs.
   trace T(b)     the straight-line op sequence the source program runs
                  for outcome b.
   reference r    one fixed outcome vector: the most likely value of each
-                 bit (for a loop: the "success" exit). Given by the user,
-                 a prior, or a simulation.
+                 bit (for a loop: the "success" exit).
   M_t            outcome budget: all b with at most t bits different from
                  r. Size: sum over k = 0..t of C(m, k).
   dynamic core   ops whose identity or parameters depend on a measured
-                 bit AFTER constant propagation, under a fixed move set
-                 (below). They must stay dynamic. Their latency is a
-                 lower bound for that move set.
+                 bit AFTER constant propagation, under a named move set.
   movable op     any other op inside a branch.
   move set       the rewrites qlin may apply:
                    hoist   move an op out of a branch when both arms
@@ -84,19 +154,18 @@ TERMS
                            measured qubit is reset and reused.
                    unroll  unroll a measurement-bounded loop up to t
                            failed tries.
+  M0             the move set {hoist, sink, merge, unroll}. No defer.
   fast path      code precompiled for outcomes in M_t, as a decision
                  tree over bit prefixes inside M_t.
   exit edge      the point where the running prefix leaves M_t (weight
                  becomes t + 1).
   compensation   code on an exit edge that puts the machine into the
-                 state the fallback expects (qubit layout, classical
-                 registers). Same role as compensation code in trace
-                 scheduling.
+                 state the fallback expects (classical registers, and
+                 later qubit layout).
   fallback       generic code, correct for every outcome, with one entry
                  point per exit edge.
 
-
-PROBLEM STATEMENT
+Problem statement
 -----------------
 Input: a program P, a device cost model C, a reference r, a budget t, and
 a code-size limit S (control hardware holds a finite number of
@@ -110,9 +179,8 @@ Objective: minimize expected cost
   E[cost] = sum over b in M_t of p(b) * C(F, b)
           + P(b not in M_t) * (C(exit) + C(G))
 
-subject to size(F) <= S. Cost is shot latency first. Error (from
-measurement and idle time) is a second axis, not a weighted sum, until a
-real device shows how to weigh them.
+subject to size(F) <= S. The objective is cost, not core size. With
+defer, the core can shrink to zero while the cost goes up (claim C2).
 
 Correctness (the soundness claim):
   (S1) For every b in M_t, F run on b gives the same channel as T(b).
@@ -120,156 +188,255 @@ Correctness (the soundness claim):
        the compensation, then G, gives the same channel as T(b).
   (S3) Every rewrite in the move set preserves the output distribution.
 
-Check S1 and S2 by trace equivalence per outcome. Trace equivalence per
-outcome implies equal channels, so this check is sound but not complete.
+Section 8 gives the check method for each claim.
 
-
-WHERE THE BUDGET PAYS AND WHERE IT DOES NOT
--------------------------------------------
-Say this in any write-up. Do not hide it.
-  - Pays: syndrome extraction plus correction (errors are rare, most
-    syndromes have low weight). Repeat-until-success (success per try is
-    likely, so a few failed tries cover most mass).
+Where the budget pays and where it does not (state this in the write-up)
+-------------------------------------------------------------------------
+  - Pays: syndrome extraction plus correction (most syndromes have low
+    weight). Repeat-until-success (a few failed tries cover most mass).
   - Neutral: iQPE and iQFT. Outcomes depend on the input phase. For an
-    exact phase the bits are deterministic and BQCP-style propagation may
-    remove the branches before qlin sees them.
-  - Does not pay: teleportation. The two bits are uniform, so no r is
-    better than another. Here m = 2, so t = 2 covers all 4 outcomes and
-    the budget is not the point. The core bound and the defer choice are.
+    exact phase, BQCP-style propagation may remove the branches first.
+  - Does not pay: teleportation. The two bits are uniform. Here m = 2, so
+    t = 2 covers all 4 outcomes. The core bound and the defer choice are
+    the point, not the budget.
 
 
-PHASES
-------
-Time estimates assume about 10 focused hours per week.
+5. CONTRIBUTIONS AND CROSSWALK
+==============================
+Contributions (what the write-up claims), each tied to claims and phases:
 
-  0. Toy IR and core analysis (this crate).                  ~2 weeks
-       Ops: gate, measure, reset, if/else on a bit expression, bounded
-       loop, loop with a measured exit bit.
-       Small text format for hand-written tests. Builder API for code.
-       Deliverables:
-         - def-use over classical bits, then mark the dynamic core
-         - a per-outcome trace enumerator T(b) for small m
-         - a state-vector reference simulator for up to about 12 qubits,
-           used only as a test oracle
-       Exit test: teleportation and a 3-qubit repetition-code round give
-       the core that a hand analysis gives. Tests fail first on a wrong
-       core.
+  K1  Core lower bound on expected latency for a named move set.
+      Claims C1, C2. Phases 0, 2.
+  K2  Fast path over M_t with exit edges, compensation, and fallback.
+      Claims C5, C8. Phase 3.
+  K3  Soundness of the construction and of each rewrite.
+      Claims C3, C7. Phases 3, 5.
+  K4  Certified optimum on small inputs by branch and bound.
+      Claim C4. Phase 2.
+  K5  A device cost model that a measurement can falsify.
+      Claim C6. Phase 4.
 
-  1. Baselines and benchmarks.                               ~2 weeks
-       1. Clone jeff to ~/dev/oss/jeff.
-       2. Add a jeff importer through the jeff-format crate (Rust,
-          v0.2.1, capnp). Import only the subset the toy IR covers.
-       3. Benchmarks with conditionals on measurement results in jeff:
-          teleportation, iqft, iqpe, repeat-until-success. The other
-          nine jeff programs have no measurement conditionals.
-       4. Add the dynamarq suite (2604.03360): repetition, five-qubit,
-          and Steane codes with lookup-table decoders, constant-depth
-          long-range CNOT and fan-out. These are where M_t pays.
-       5. Run baselines on the same programs: bqcp (Python), Qiskit
-          transpiler with control flow, TKET. Record the numbers the
-          baselines report, not a new metric only qlin wins on.
-       Exit test: one table, every benchmark times every baseline, with
-       the dynamic-op count and the feedforward count per program.
-
-  2. Core bound and branch and bound over movable ops.       ~3 weeks
-       - Core lower bound: critical path through core ops, each paying
-         measure time plus feedforward latency from C.
-       - Branch and bound over move choices, pruned by the core bound.
-       - Exact on small programs. Certify by exhaustive search on the
-         smallest ones. Anything larger is a labelled heuristic.
-       Exit test: on every small benchmark, exhaustive search and branch
-       and bound give the same optimum.
-
-  3. Fast path, exit edges, fallback.                        ~3 weeks
-       - Build the decision tree over prefixes in M_t.
-       - Place exit edges and generate compensation code.
-       - Fallback: the source program, compiled once, with an entry per
-         exit edge.
-       - Check S1 and S2 for every outcome on small m by the trace
-         enumerator and the simulator. Cross-check with MQT QCEC, which
-         handles dynamic circuits (Burgholzer and Wille, 2106.01099), or
-         with Hybrid Path-Sums (2604.24578), which also covers the defer
-         rewrite from classical to quantum control.
-       Exit test: sweep t from 0 to m on every benchmark. Report fast
-       path size, exit probability, and expected latency per t.
-
-  4. Device cost model and falsification.                    ~2 weeks
-       Parameters: measure time and error, feedforward latency, native
-       gate times, reset time, connectivity or transport, controller
-       code-size limit. Starting values in notes/prior-work.txt,
-       section 8.
-       Falsification test: for each benchmark variant, predict shot time
-       on a device, then measure it. Report rank correlation and the
-       worst miss. If the model ranks two variants in the wrong order,
-       the model is wrong for that device. Say so.
-       Targets: IBM Heron (if access allows), Quantinuum Helios through
-       the Helios-1E emulator or Selene. Emulator numbers are "emulated",
-       not "measured". Label them.
-
-  5. Optional: Lean model of S1 to S3 for the toy IR.        ~2 weeks
-       Classical-bit semantics only. Treat each gate as an opaque symbol.
-       Prove that per-outcome trace equality is kept by each rewrite and
-       by the exit-plus-compensation construction.
-
-Paper decision: after phase 2 has numbers. Candidate venues (check each
-deadline, none checked yet): PLanQC workshop, IEEE QCE, CGO or CC,
-ASPLOS as a stretch.
+  Phase   builds K     gate
+  0       K1 (core)    G0
+  1       (infra)      G1
+  2       K1, K4       G2
+  3       K2, K3       G3
+  4       K5           G4
+  5       K3 (Lean)    (stretch)
+  6       write-up     done check (D1 to D5)
 
 
-PROVEN VS HEURISTIC
--------------------
-Every claim gets a status. Allowed statuses: target, hand-derived,
-machine-checked (Lean or exhaustive), empirical, heuristic.
+6. PHASES AND GATES
+===================
+Time estimates assume about 10 focused hours per week. A phase is
+finished only when its gate passes. A failed gate follows its pivot rule.
 
-  C1  Core lower bound on makespan, for a fixed move set without
-      "defer".                                               target
-  C2  With "defer" in the move set the core can shrink, even to zero
-      (teleportation becomes a fully coherent circuit). So C1 must name
-      its move set.                                    hand-derived
-  C3  Soundness S1, S2, S3.                                 target
-  C4  Branch and bound finds the optimum on small inputs. target,
+Phase 0. Toy IR and core analysis.                           ~2 weeks
+  0.1  Commit the crate skeleton. Add README.md and AGENTS.md.
+  0.2  IR types: ops, bit expressions, blocks, loops. Builder API.
+  0.3  Text format parser for hand-written tests.
+  0.4  Def-use over classical bits. Mark the dynamic core under M0.
+  0.5  Trace enumerator T(b) for small m.
+  0.6  State-vector simulator, up to about 12 qubits, test oracle only.
+  G0   Teleportation and a 3-qubit repetition-code round give the core
+       that a hand analysis gives. Each test fails first on a planted
+       wrong core.
+       Pivot if G0 fails: fix the IR. No later phase starts.
+
+Phase 1. Baselines and benchmarks.                           ~2 weeks
+  1.1  Clone jeff to ~/dev/oss/jeff.
+  1.2  jeff importer through the jeff-format crate (Rust, v0.2.1, capnp),
+       for the subset the toy IR covers.
+  1.3  jeff benchmarks with measurement conditionals: teleportation,
+       iqft, iqpe, repeat-until-success.
+  1.4  dynamarq suite (2604.03360): repetition, five-qubit, and Steane
+       codes with lookup decoders, constant-depth long-range CNOT and
+       fan-out.
+  1.5  Run bqcp, Qiskit, and TKET on the same programs. Record the
+       numbers each baseline reports.
+  G1   One table: every benchmark times every baseline, with dynamic-op
+       count and feedforward count. Also: after a bqcp pre-pass, at
+       least 3 benchmarks still have movable ops inside branches.
+       Pivot if fewer than 3: the fast path has no room on these
+       programs. Narrow to the QEC and RUS benchmarks and add more
+       dynamarq codes. If still fewer than 3, stop and write K1 alone
+       as a short note.
+
+Phase 2. Core bound and branch and bound.                    ~3 weeks
+  2.1  Core lower bound: critical path through core ops, each paying
+       measure time plus feedforward latency from C.
+  2.2  Branch and bound over move choices, pruned by the core bound.
+  2.3  Exhaustive search on the smallest programs, as the certifier.
+  G2   On every small benchmark, exhaustive search and branch and bound
+       give the same optimum. The core bound is at or below that optimum
+       on every benchmark (a bound above the optimum is a bug).
+       Pivot if B&B does not scale past the smallest programs: keep it
+       as the certifier and use a labelled heuristic above that size.
+
+Phase 3. Fast path, exit edges, fallback.                    ~3 weeks
+  3.1  Decision tree over prefixes in M_t.
+  3.2  Exit edges and classical compensation code.
+  3.3  Fallback: the source program, compiled once, one entry per exit
+       edge.
+  3.4  Soundness check per section 8, for every outcome, on m <= 12.
+  3.5  t-sweep from 0 to m on every benchmark: fast-path size, exit
+       probability, expected latency.
+  G3   Soundness check passes on every benchmark and fails on a planted
+       wrong rewrite. Pitch decision, by the modeled gain against the
+       best baseline:
+         - gain >= 10% expected latency on at least 2 benchmarks: pitch
+           is "method + gain". Consider a workshop (X3).
+         - smaller gain: pitch is "method + bound + soundness". Write-up
+           only, no venue push.
+       Contact Yuan with the G3 table and a draft outline (proposed,
+       Rylan decides).
+
+Phase 4. Device cost model and falsification.                ~2 weeks
+  4.1  Parameters: measure time and error, feedforward latency, native
+       gate times, reset time, controller code-size limit, result-read
+       count (Helios sync points). Starting values in
+       notes/prior-work.txt, section 8.
+  4.2  Predict shot time per benchmark variant. Run the variants on
+       Helios-1E or Selene. Label numbers "emulated".
+  4.3  Stretch X2: the same on IBM Heron, free open plan only.
+  G4   Report rank correlation and the worst miss. If the model ranks
+       two variants in the wrong order on a device, the write-up says
+       the model is wrong for that device. The gate passes on an honest
+       report, not on a good correlation.
+
+Phase 5 (stretch X1). Lean model of S1 to S3.                ~2 weeks
+  Classical-bit semantics only. Gates are opaque symbols. Prove that
+  per-outcome trace equality is kept by hoist, sink, merge, unroll, and
+  by the exit-plus-compensation construction. Defer stays out of the
+  Lean model (it needs quantum semantics).
+
+Phase 6. Write-up.                                           ~2 weeks
+  8 to 12 pages. Check D1 to D5. Every claim carries its section 9
+  status.
+
+
+7. EVALUATION PROTOCOL
+======================
+Benchmark set: section 6, steps 1.3 and 1.4.
+
+Metrics, per benchmark, per baseline, per t:
+  dyn     number of classically controlled ops left after the pass.
+  ff      number of feedforward edges on the critical path.
+  E[lat]  expected shot latency under cost model C and prior p(b).
+  size    fast-path size, in ops and in precompiled segments.
+  exit    exit probability P(b not in M_t).
+  cost+   extra 2-qubit gates and extra qubits from defer.
+  ctime   compile time.
+Baselines are reported on their own metrics too (gate count, depth, ff
+count). No table shows only a metric that only qlin wins on.
+
+Labels on every number: modeled, emulated, or measured.
+
+
+8. SOUNDNESS CHECK METHOD
+=========================
+Per-outcome trace equivalence checks hoist, sink, merge, and unroll.
+It does NOT check defer, because defer moves a measurement and changes
+the trace itself. So:
+
+  - Moves in M0: for each b, compare the op sequence of F (or of the
+    prefix, compensation, and G) against T(b). Equal traces imply equal
+    channels. Sound, not complete.
+  - Defer: compare channels directly. On m <= 12, compare output
+    distributions from the state-vector simulator for every input basis
+    state and every b. Cross-check with MQT QCEC (2106.01099) or Hybrid
+    Path-Sums (2604.24578), which covers the classical-to-quantum
+    control rewrite.
+  - Every check has a negative test: a planted wrong rewrite that the
+    check must reject.
+
+
+9. CLAIMS LEDGER (proven vs heuristic)
+======================================
+Statuses: target, hand-derived, machine-checked (Lean or exhaustive),
+empirical, heuristic.
+
+  C1  Core lower bound on makespan, for move set M0.          target
+  C2  With defer in the move set, the core can shrink to zero
+      (teleportation becomes a fully coherent circuit). So C1 names M0,
+      and the objective is cost, not core size.           hand-derived
+  C3  Soundness S1, S2 for moves in M0.                       target
+  C4  Branch and bound finds the optimum on small inputs.     target,
       check by exhaustive search
   C5  Expected-latency gain on benchmarks.         empirical, not run
-  C6  Cost model ranks variants correctly on device X. empirical, not run
+  C6  Cost model ranks variants correctly on device X.
+                                                   empirical, not run
+  C7  Defer preserves the output distribution (S3 for defer).
+                                                   target, simulator
+  C8  Fast-path size stays within S for t <= 2 on the QEC benchmarks.
+                                                   empirical, not run
 
 
-OPEN QUESTIONS
---------------
-  - IR input format: DECIDED 2026-09-25. Own small text format for tests
-    in phase 0. jeff importer in phase 1 through the jeff-format crate.
-  - Soundness beyond BQCP: DECIDED 2026-09-25. BQCP proves an ANALYSIS
-    sound (constant propagation across branches). qlin is a TRANSFORMATION
-    with a size limit. Its claims are S1 to S3 (dispatch soundness across
-    exit edges), C1 (a lower bound that names its move set), and C4
-    (certified optimum on small inputs). BQCP can run as a pre-pass. Its
-    output then shrinks the core.
-  - How to get p(b): a user prior per bit, a noise model (for syndromes),
-    or the probabilistic circuit model of 2605.28439. Pick one for phase
-    3. Probably the per-bit prior first, because it is the simplest.
-  - Does compensation code ever need a quantum op, or is it always
-    classical (layout, registers)? On Helios the runtime owns layout, so
-    it may be classical only there. On IBM a layout mismatch needs SWAPs
-    (see DynamiQ, 2609.08075, qubit reconciliation).
-  - Error axis: does a shorter fast path reduce idle error enough to
-    show on hardware? Unknown until phase 4.
+10. DECISIONS
+=============
+  2026-09-25  Objective: portfolio result for Yuan and applications.
+              Venue secondary, decided at G3.
+  2026-09-25  No calendar deadline. Phase gates only.
+  2026-09-25  Hardware: emulator required, IBM free open plan as
+              stretch, $0 device budget.
+  2026-09-25  Objective function is expected cost, not core size.
+  2026-09-25  Defer is checked by channel comparison, not by trace
+              equivalence.
+  2026-09-25  Layout is a fixed input. Compensation is classical only.
+  2026-09-25  IR input: own text format for tests (Phase 0), jeff
+              importer (Phase 1).
+  2026-09-25  Soundness beyond BQCP: BQCP proves an ANALYSIS sound. qlin
+              is a TRANSFORMATION with a size limit. Its claims are S1
+              to S3, C1 (bound with a named move set), and C4. BQCP can
+              run as a pre-pass.
 
 
-RISKS
------
-  1. The Munich group (Fulginiti, Chen, Rovara, Burgholzer, Wille) put out
-     five dynamic-circuit compiler papers in 2026. Check arXiv each week
-     for "outcome", "likely", "speculative", "fast path".
-  2. At about 600 ns feedforward on IBM, the latency win may be small
-     next to measurement time. Then the result is the method plus the
-     bound, not a large speedup. Decide the pitch after phase 2.
-  3. M_t grows as C(m, t). On long syndrome loops, t must stay small or
-     the fast path must be per round, not per whole program.
-  4. Device access. IBM open plan runs dynamic circuits. Helios is
-     emulator only for now. Plan for emulated numbers.
+11. OPEN QUESTIONS
+==================
+  - p(b): per-bit prior first. A noise model for syndrome bits second.
+    The probabilistic circuit model of 2605.28439 is a later option.
+    Decide at the start of Phase 3.
+  - Does compensation ever need a quantum op? On Helios the runtime owns
+    layout. On IBM a layout mismatch needs SWAPs (DynamiQ). Out of scope
+    for v1. Revisit only if a benchmark needs it.
+  - Does a shorter fast path reduce idle error enough to show? Unknown
+    until Phase 4.
+  - Venue deadlines (PLanQC, QCE, CGO, CC): not checked. Check at G3
+    only if the pitch is "method + gain".
+
+
+12. RISKS, FAILURE MODES, PIVOTS
+================================
+  1. Scoop. The Munich group (Fulginiti, Chen, Rovara, Burgholzer,
+     Wille) put out five dynamic-circuit compiler papers in 2026. Check
+     arXiv each week for "outcome", "likely", "speculative", "fast
+     path". Pivot if a paper does an outcome-budget fast path with
+     fallback: reposition on K1 (bound) and K3 (soundness), cite it.
+  2. Small gain. At about 600 ns feedforward on IBM, the latency win may
+     be small next to measurement time. G3 handles this: the pitch
+     becomes method + bound + soundness.
+  3. M_t grows as C(m, t). On long syndrome loops, t stays small or the
+     fast path is per round, not per program.
+  4. No room. bqcp may remove most branches before qlin sees them. G1
+     handles this.
+  5. Device access. Helios is emulator only. IBM open plan minutes are
+     limited. Plan for emulated numbers.
 
 
 LAYOUT
 ------
   PLAN.txt              this file
   notes/prior-work.txt  literature pass, 2026-09-23 and 2026-09-25
-  src/lib.rs            crate root (phase 0 goes here)
+  src/lib.rs            crate root (Phase 0 goes here)
+
+
+13. LOG (newest first)
+======================
+  2026-09-25  Plan v2. Added objective, definition of done (D1 to D5),
+              scope in/out, contributions crosswalk, phase gates with
+              pivot rules, evaluation protocol, soundness check method,
+              claims C7 and C8, decisions, log. Fixed two gaps: the
+              objective is cost, not core size, and defer needs a
+              channel check, not a trace check.
+  2026-09-25  Research pass and plan v1. Email to Charles Yuan sent.
+  2026-09-23  Project started. Literature pass 1.

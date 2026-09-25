@@ -1,0 +1,295 @@
+qlin prior work
+===============
+2026-09-23. Sources read from arXiv LaTeX where noted, else abstract only.
+
+Scope rule: nothing from the unreleased LANL work (aro, affine rules over a
+parameter box, the sampling certificate). The uncertainty set here is over
+measurement outcomes only: a simple budget or tolerance.
+
+
+1. the question
+---------------
+What is the minimal runtime-decided part of a dynamic quantum program, and
+how does the device change it?
+
+  - Irreducible core: ops with a true data dependency on a measured bit.
+    They must stay dynamic. Their latency is a lower bound. Provable.
+  - Movable ops: everything else in a branch. Each move has a cost
+    (duplicate into both branches, extra qubits, routing or transport).
+  - Branch and bound over the movable ops, pruned by the core bound.
+    Exact on small programs. Anything larger is a labelled heuristic.
+  - Outcome budget M_t (at most t unusual bits): fast path precompiled for
+    outcomes in M_t, correct generic fallback for the rest (hot/cold split).
+  - Device enters only through a small cost model: feedforward latency,
+    measurement time and error, native gates, connectivity or transport.
+
+
+2. dynamic-circuit optimisation (the direct baselines)
+-------------------------------------------------------
+2609.16171  Why Are We Unrolling?  Rovara, Haag, Koch, Izaac, Sivarajah,
+            Wille, Borgna, Burgholzer, Chase, Di Matteo, Ittah.  [source]
+    Challenge paper: compile structured programs without unrolling.
+    Benchmarks in jeff. Names "dynamic qubit allocation" as a structural
+    element. Cites parametric compilation (Karalekas 2020) as prior art.
+
+2504.09234  Branch expansion.  Yanbin Chen.  CF 2025.  [source]
+    States that TKET passes do not merge ops across classically
+    controlled branches. Trade-off knob: depth_limit.
+
+2605.28439  Compile-time simplification of classically controlled ops.
+            Fulginiti, Chen, Mendl, Seidl.  [source]
+    Symbolic simulation + probabilistic circuit model. About 50% fewer
+    feedforward ops on random circuits. State-size threshold.
+    FUTURE WORK THEY NAME: a hardware-aware cost model for measurement
+    overhead and feedforward latency. That is an open slot.
+
+2606.02018  Branch-aware quantum constant propagation (BQCP).
+            Fulginiti, Chen.  QSW 2026.  [source]
+    Path-sensitive analysis, bounded branches. Proves soundness.
+    Code: github.com/1nnocenzo/bqcp.  Soundness is the bar to beat.
+
+None of the three TUM papers handles symbolic angles (keyword check only).
+
+
+3. routing and mapping across control flow
+------------------------------------------
+2609.08075  Mapping dynamic, hierarchical circuits (DynamiQ).
+            Benbetka, Bekkar, Yoon, Baghdadi, Kong.  [source]
+    Maps each sub-circuit in a control-flow path. "Qubit Reconciliation"
+    uses token swapping at control-flow boundaries so branches agree on
+    the layout. Handles for/while via bidirectional passes. Baseline:
+    Qiskit LightSABRE, "the only mapper that supports circuits with
+    dynamic control-flow". Evaluated on IBM Brisbane and Kingston.
+    Superconducting coupling graphs only. No trapped-ion transport.
+    -> Cite for routing. Do not build a router.
+
+
+4. trapped-ion transport (QCCD)
+-------------------------------
+Answer to "is transport a cost on the coupling graph": partly. On a QCCD
+the cost depends on where the ions ARE, which changes as the program runs.
+So it is a state-dependent graph, not fixed edge weights. On Helios the
+transport decision is itself made at runtime (below). Your "level 2
+control flow" intuition matches what Quantinuum built.
+
+2511.05465  Helios: a 98-qubit trapped-ion quantum computer.  [source]
+    Ring storage + X-junction + two operation regions. All-to-all logical
+    connectivity through transport. The Helios RUNTIME maps virtual qubits
+    to physical qubits "in real time, while the program is executing".
+    Runtime jobs: (1) resolve allocation requests to physical qubits,
+    (2) take gate requests, (3) pack gates into parallel "slices",
+    (4) "sort": O(n) traversal of the ring, move pairs into the cache
+    with the fewest rotations. Supports allocate/free inside control flow
+    and early termination on a measurement.
+    -> On Helios, routing is a runtime job, not a compile-time pass.
+       The compiler's job is to hand the runtime easy decisions.
+
+2501.12470  Position graph abstraction (SHAPER, SHAW).
+            Bach, Safro, Younis.  [abstract]
+    One graph abstraction for QCCD and other architectures. Heuristic
+    shuttling-aware scheduling. Static circuits.
+
+2505.01316  S-SYNC: shuttle and swap co-optimisation.
+            Zhu, Wu, Wang, Wang.  [abstract]
+    QCCD as a weighted static graph with empty "space nodes". 3.69x fewer
+    shuttles on average. Static circuits.
+
+Also seen, not read: TrapSIMD (2504.17886), shuttling-aware dynamical
+decoupling (2609.03014), TUM shuttling with embedded processing zones
+(QSW 2025).
+
+
+5. reducing big graphs to small ones
+------------------------------------
+Same idea as the small-instance exact solving at LANL: coarsen, solve
+small pieces exactly, project back. Public literature only.
+
+2505.24169  ML-SABRE, multilevel layout synthesis.  Ping, ..., Cong.
+            [abstract]
+    Coarsen the coupling and interaction graphs, run LightSABRE at every
+    level. Over 60% fewer SWAPs and up to 82% smaller optimality gap.
+
+2608.04058  Exact branch and bound for static qubit allocation.
+            Kamer Kaya.  [abstract]
+    Rectangular QAP. Exact reductions, symmetry pruning, device profiles
+    built once per device. Certified optimal on its benchmark set in
+    under 30 minutes on 60 threads.
+    -> Closest template for the branch-and-bound part. Static circuits
+       only, so the dynamic core is still open.
+
+Classic references to add later: OLSQ (exact layout synthesis), QAOA
+divide-and-conquer partitioning.
+
+
+6. what looks open (check again before claiming)
+-------------------------------------------------
+  - Minimal dynamic core with a device cost model. 2605.28439 names it as
+    future work.
+  - Outcome-budget fast path with a correct fallback. No match found.
+  - Branch and bound for the DYNAMIC part. Kaya does static allocation.
+  - Trapped-ion transport cost inside dynamic programs. The QCCD papers
+    are static. Helios decides transport at runtime.
+
+
+7. tools
+--------
+  jeff      github.com/unitaryfoundation/jeff   Rust impl in impl/rs.
+            benchmarks/structured: teleportation, repeat-until-success,
+            iqpe, iqft, ghz-linear, ghz-star, qpe, qft-adder, grover,
+            multiplexer, controlled-multiplication-modulo-n.
+  bqcp      github.com/1nnocenzo/bqcp           baseline.
+  Selene    Quantinuum emulator with measurement-dependent control flow.
+  Qiskit    LightSABRE, the only mapper with control-flow support.
+
+Next step: see PLAN.txt, phase 0.
+
+
+8. device numbers for the cost model (added 2026-09-25)
+--------------------------------------------------------
+Starting values only. Phase 4 replaces them with measured values.
+  IBM Heron (Kingston r2, Pittsburgh r3), from 2604.03360 [source]:
+    feedforward classical latency   about 600 ns
+    final measurement               34x longer than a 2q gate,
+                                    error 5x the 2q gate error
+    new mid-circuit measurement     65% shorter than final measurement,
+                                    error about 10x the 2q gate error
+    measurement-induced dephasing on spectator qubits: exists, cite
+    Hashim 2025.
+  IBM Nighthawk r2: fast reset, repetition delay 250 us -> 1 us (IBM
+    blog). Not a feedforward number.
+  Quantum Machines OPX+: conditional feedback 224 ns, parametric
+    feedback 272 ns (vendor page).
+  QuCtrl-BELL (2605.22433), trapped ion: cross-board feedback under
+    700 ns. Compiler-driven control stack: CFG, SSA, register allocation.
+  Quantinuum Helios: "microsecond" feedforward (no exact number found).
+    Helios docs: the control system serializes function calls but
+    parallelizes native gates. Decoupling measurements from result reads
+    cut shot time by 90% on their example. Up to 16 qubits or eight 2q
+    gates per execution window.
+    -> On Helios, each result read is a sync point. Counting result reads
+       is a first cost-model term.
+
+
+9. added 2026-09-25: framing and PL relatives
+---------------------------------------------
+Charles Yuan (UW-Madison) work that touches qlin:
+2311.12772  T-complexity costs of error correction for control flow.
+            Yuan, Carbin. PLDI 2024.  [abstract]
+    Cost model for the quantum if-statement. Optimizations in Spire
+    (extends Tower). Prices QUANTUM control flow. qlin prices CLASSICAL
+    control flow. The defer rewrite converts between the two.
+2304.15000  Quantum Control Machine. Yuan, Villanyi, Carbin. OOPSLA 2024.
+            [abstract]
+    A program counter in superposition cannot realize classical-style
+    jumps without losing the speedup. Sets the line between classical
+    and quantum control.
+2511.01736  Cobble. Yuan et al. PLDI 2026, Distinguished Paper.
+            [abstract]
+    Block-encoding language with time and space cost analyses and
+    optimizations. 2.6x to 25.4x on its kernels. Shows the style: a
+    language, a cost analysis, then optimizations checked by that cost.
+Also: "Time-space complexity of checking multiple assertions in quantum
+programs" (Yang, Yuan, PLanQC 2026). Not read.
+
+2601.20247  CS challenges in early fault tolerance. Palsberg, Cong,
+            Ding, et al.  [source, grepped]
+    Asks for IRs with precise semantics for mid-circuit measurement and
+    hybrid execution. Asks to report "space, time, and classical control
+    costs" separately, not as one figure of merit. Supports the plan's
+    choice of latency and error as two axes.
+
+Common-case/fallback splits in decoding (analogy, not a baseline):
+2208.08547  Clique. Ravi, Baker, ..., Chong. MICRO 2022. [abstract]
+    Cheap decoder for trivial common syndromes, full decoder for the
+    rest.
+2001.11427  Lazy decoder, hierarchical decoding. Delfosse. [abstract]
+Own: 2607.13062 specqec, runtime predict/verify/recover for window
+    decoding.
+
+Speculation at the FT level:
+2606.19593  Stalls and Spequlation. Pipelined control/execute/decode for
+            FTQC with speculation and rollback.  [abstract]
+    20 to 40% fewer pipeline steps. Runtime speculation on decode, not
+    compile-time specialization on outcomes. Cite as the runtime
+    relative.
+
+Classic PL relatives (cite details not yet checked against the papers):
+    Fisher 1981, trace scheduling, compensation code on side exits.
+    Hwu et al. 1993, the superblock.
+    Pettis and Hansen, PLDI 1990, profile-guided code positioning.
+    Holzle, Chambers, Ungar, PLDI 1992, dynamic deoptimization.
+
+
+10. added 2026-09-25: more dynamic-circuit work
+-----------------------------------------------
+2604.03360  dynamarq: benchmarking framework for dynamic circuits.
+            Shirgure, Kokcu, Mitra, de Jong, Iancu, Niu.  [source]
+    Suite: QEC codes with lookup decoders, constant-depth Cliffords,
+    IPE, partial QFT + M, TFIM. Runs on IBM Kingston, Pittsburgh, and
+    Helios-1E. Defines EXPECTED depth over outcome probabilities. Their
+    probability estimate avoids full simulation. -> Use their suite and
+    compare to their expected-depth feature.
+2609.01037  Dynamic IR with gates as first-class values. Rice, Heunen,
+            Grosser.  [abstract]
+    IR design relative. Not a baseline.
+2605.22980  De-quantization by hybrid quantum-classical constant
+            propagation. Remme, ..., Burgholzer, Wille. MQT Core.
+            [abstract]
+    Another pre-pass that can shrink the core.
+2511.22712  Qubit reuse beyond reorder and reset. Rovara, Burgholzer,
+            Wille.  [abstract]
+    Inserts classically controlled gates to enable reuse. The opposite
+    direction of "defer". The cost model must price both.
+2412.07969  AC/DC: synthesis of dynamic circuits with MCM and
+            feedforward in the objective. Niu et al.  [abstract]
+2310.11021  Dynamic circuit compilation by qubit reuse, BIP optimum.
+            Fang et al.  [abstract]
+2609.26516  Tensor-network simulation of dynamic circuits, single-path
+            vs multi-path branches. Fulginiti, Poggiali, Mendl.
+            [abstract]
+    Possible oracle for larger programs than a state vector allows.
+2106.01099  Equivalence checking with non-unitaries. Burgholzer, Wille.
+            [abstract]
+    Basis for checking S1 and S2 with MQT QCEC.
+2605.22433  QuCtrl-BELL, compiler-driven trapped-ion control stack.
+            [abstract]
+2505.14902  RISC-Q, generator for quantum control SoCs. [abstract]
+
+2604.16613  GreenPeas: just-in-time compiler for decoding hypergraphs.
+            Ziad, Xu, Fan.  [abstract]
+    States that precompiling decoder hypergraphs "for all possible
+    circuit branches would incur an exponential memory cost", so it
+    compiles just in time on a GPU. 13.2x over Stim. The object is the
+    DECODER hypergraph, not the program. Not a competitor.
+    -> Useful foil. Precompile every branch is exponential. JIT every
+       branch pays latency on every shot. M_t is the budgeted middle.
+       Cite this in the motivation.
+2609.29305  QaiJi IR, eight-layer hybrid IR family. Jun Ye. [abstract]
+    Lowers a measurement-conditioned branch to a pulse-level conditional.
+    IR relative only.
+2603.17774  Quantum Depth Compression via local dynamic circuits.
+            Hall, Goiporia, Rines.  [abstract]
+    Uses dynamic circuits as a compile target to cut depth. It adds
+    feedforward, where qlin tries to remove runtime decisions. Not a
+    competitor.
+
+Novelty check, run 2026-09-25, two passes.
+  Pass 1: web search plus arXiv abstracts. No match.
+  Pass 2: arXiv abstract search, with a control query that found
+  2606.02018 as expected. Phrase queries with zero hits:
+    "dynamic circuits" + "fast path"
+    "mid-circuit measurement" + speculative
+    "dynamic circuits" + "most likely" + outcome
+    "feedforward" + "likely outcomes"
+    "classically controlled" + "outcome distribution" + compil*
+    "measurement outcomes" + precompil*
+    "dynamic circuits" + "hot path"
+    "feed-forward" + "common case"
+  Title scan of every 2026 hit for "dynamic circuits" + compiler (20 hits)
+  and "mid-circuit measurements" + compiler (27 hits): no match.
+  Semantic Scholar full-text search: failed twice, both times with
+  connection refused. Not done.
+  Result: no prior work found on a budgeted fast path over measurement
+  outcomes with a sound fallback. Section 6 still holds. This is absence
+  of evidence from abstract search only. Run it again before any claim of
+  novelty.

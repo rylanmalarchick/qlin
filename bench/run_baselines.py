@@ -86,7 +86,9 @@ def main() -> int:
         source = qlin("fmt", str(path))
         small = prog["n_qubits"] <= SIM_QUBITS
         src_dist = dist(source) if small else None
-        rows.append(_row(bench, "source", source, "", 0.0, "reference" if small else "too many qubits"))
+        # A *_noisy benchmark has one noise-source qubit, the last one.
+        noise = [prog["n_qubits"] - 1] if path.stem.endswith("_noisy") else []
+        rows.append(_row(bench, "source", source, "", 0.0, "reference" if small else "too many qubits", noise))
         for name, run in PIPELINES:
             start = time.perf_counter()
             try:
@@ -105,18 +107,19 @@ def main() -> int:
                 guard = "match" if ok else f"MISMATCH (max diff {worst:.3g})"
                 if not ok:
                     mismatches.append(f"{bench} / {name}")
-            rows.append(_row(bench, name, text, reason, seconds, guard if text else ""))
+            rows.append(_row(bench, name, text, reason, seconds, guard if text else "", noise))
         print(bench, flush=True)
     _write(rows, mismatches)
     print(f"{len(files)} benchmarks, {len(rows)} rows, {len(mismatches)} mismatches")
     return 0
 
 
-def _row(bench, pipeline, text, reason, seconds, guard) -> dict:
+def _row(bench, pipeline, text, reason, seconds, guard, noise) -> dict:
     r = {"benchmark": bench, "pipeline": pipeline, "status": "ok" if text is not None else "n/a",
          "reason": reason, "guard": guard, "seconds": f"{seconds:.3f}"}
     if text is not None:
-        s = json.loads(qlin_text(text, "stats", "--json"))
+        flags = ["--noise-qubits", ",".join(map(str, noise))] if noise else []
+        s = json.loads(qlin_text(text, "stats", "--json", *flags))
         r.update({k: s[k] for k in METRICS})
     return r
 

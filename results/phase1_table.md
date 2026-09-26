@@ -15,6 +15,11 @@
 | dynamarq/five_qubit_code | qiskit_o0 | 11 | 11 | 195 | 26 | 25 | 20 | 25 | 0 | 0 | 0 | match |
 | dynamarq/five_qubit_code | qiskit_o3 | 11 | 11 | 171 | 26 | 25 | 20 | 25 | 0 | 0 | 0 | match |
 | dynamarq/five_qubit_code | tket | 11 | 11 | 88 | 26 | 20 | 20 | 20 | 0 | 0 | 0 | match |
+| dynamarq/five_qubit_code_noisy | source | 11 | 11 | 58 | 26 | 20 | 20 | 20 | 0 | 0 | 0 | reference |
+| dynamarq/five_qubit_code_noisy | bqcp | 11 | 11 | 58 | 26 | 20 | 20 | 20 | 0 | 0 | 0 | match |
+| dynamarq/five_qubit_code_noisy | qiskit_o0 | 11 | 11 | 195 | 26 | 25 | 20 | 25 | 0 | 0 | 0 | match |
+| dynamarq/five_qubit_code_noisy | qiskit_o3 | 11 | 11 | 171 | 26 | 25 | 20 | 25 | 0 | 0 | 0 | match |
+| dynamarq/five_qubit_code_noisy | tket | 11 | 11 | 88 | 26 | 20 | 20 | 20 | 0 | 0 | 0 | match |
 | dynamarq/ghz5 | source | 9 | 9 | 17 | 8 | 4 | 4 | 4 | 0 | 0 | 0 | reference |
 | dynamarq/ghz5 | bqcp | 9 | 9 | 17 | 8 | 4 | 4 | 4 | 0 | 0 | 0 | match |
 | dynamarq/ghz5 | qiskit_o0 | 9 | 9 | 27 | 8 | 4 | 4 | 4 | 0 | 0 | 0 | match |
@@ -35,26 +40,61 @@
 | dynamarq/repetition3_0 | qiskit_o0 | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_0 | qiskit_o3 | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_0 | tket | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_0_noisy | source | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | reference |
+| dynamarq/repetition3_0_noisy | bqcp | 5 | 5 | 10 | 4 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_0_noisy | qiskit_o0 | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_0_noisy | qiskit_o3 | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_0_noisy | tket | 5 | 5 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_1 | source | 5 | 5 | 13 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | reference |
 | dynamarq/repetition3_1 | bqcp | 5 | 0 | 10 | 8 | 0 | 0 | 0 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_1 | qiskit_o0 | 5 | 5 | 17 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_1 | qiskit_o3 | 5 | 5 | 17 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition3_1 | tket | 5 | 5 | 14 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_1_noisy | source | 5 | 5 | 13 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | reference |
+| dynamarq/repetition3_1_noisy | bqcp | 5 | 5 | 13 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_1_noisy | qiskit_o0 | 5 | 5 | 17 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_1_noisy | qiskit_o3 | 5 | 5 | 17 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
+| dynamarq/repetition3_1_noisy | tket | 5 | 5 | 14 | 8 | 3 | 3 | 3 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_0 | source | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | reference |
 | dynamarq/repetition5_0 | bqcp | 9 | 5 | 13 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_0 | qiskit_o0 | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_0 | qiskit_o3 | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_0 | tket | n/a: RuntimeError: Can only build replacement circuits for basic gates: CircBox |  |  |  |  |  |  |  |  |  |  |
+| dynamarq/repetition5_0_noisy | source | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | reference |
+| dynamarq/repetition5_0_noisy | bqcp | 9 | 9 | 38 | 8 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_0_noisy | qiskit_o0 | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_0_noisy | qiskit_o3 | 9 | 9 | 38 | 12 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_0_noisy | tket | n/a: RuntimeError: Can only build replacement circuits for basic gates: CircBox |  |  |  |  |  |  |  |  |  |  |
 | dynamarq/repetition5_1 | source | 9 | 9 | 43 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | reference |
 | dynamarq/repetition5_1 | bqcp | 9 | 0 | 18 | 16 | 0 | 0 | 0 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_1 | qiskit_o0 | 9 | 9 | 47 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_1 | qiskit_o3 | 9 | 9 | 47 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | match |
 | dynamarq/repetition5_1 | tket | n/a: RuntimeError: Can only build replacement circuits for basic gates: CircBox |  |  |  |  |  |  |  |  |  |  |
+| dynamarq/repetition5_1_noisy | source | 9 | 9 | 43 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | reference |
+| dynamarq/repetition5_1_noisy | bqcp | 9 | 9 | 43 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_1_noisy | qiskit_o0 | 9 | 9 | 47 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_1_noisy | qiskit_o3 | 9 | 9 | 47 | 16 | 25 | 15 | 25 | 0 | 0 | 0 | match |
+| dynamarq/repetition5_1_noisy | tket | n/a: RuntimeError: Can only build replacement circuits for basic gates: CircBox |  |  |  |  |  |  |  |  |  |  |
 | dynamarq/steane | source | 14 | 14 | 79 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
 | dynamarq/steane | bqcp | 14 | 7 | 65 | 40 | 0 | 0 | 0 | 0 | 0 | 0 | too many qubits |
 | dynamarq/steane | qiskit_o0 | 14 | 14 | 143 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
 | dynamarq/steane | qiskit_o3 | 14 | 14 | 103 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
 | dynamarq/steane | tket | 14 | 14 | 73 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| dynamarq/steane_noisy | source | 14 | 14 | 79 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| dynamarq/steane_noisy | bqcp | 14 | 14 | 79 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| dynamarq/steane_noisy | qiskit_o0 | 14 | 14 | 143 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| dynamarq/steane_noisy | qiskit_o3 | 14 | 14 | 103 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| dynamarq/steane_noisy | tket | 14 | 14 | 73 | 40 | 14 | 14 | 14 | 0 | 0 | 0 | too many qubits |
+| hand/decode_reset | source | 5 | 5 | 12 | 6 | 11 | 3 | 11 | 0 | 0 | 0 | reference |
+| hand/decode_reset | bqcp | 5 | 3 | 11 | 0 | 0 | 0 | 0 | 0 | 0 | 6 | match |
+| hand/decode_reset | qiskit_o0 | 5 | 5 | 16 | 6 | 11 | 3 | 11 | 0 | 0 | 0 | match |
+| hand/decode_reset | qiskit_o3 | 5 | 5 | 10 | 6 | 11 | 3 | 11 | 0 | 0 | 0 | match |
+| hand/decode_reset | tket | n/a: RuntimeError: Cannot find classical register with name "k3_4". |  |  |  |  |  |  |  |  |  |  |
+| hand/mbqc_chain4 | source | 4 | 4 | 20 | 3 | 14 | 4 | 6 | 0 | 4 | 0 | reference |
+| hand/mbqc_chain4 | bqcp | 4 | 4 | 17 | 3 | 7 | 2 | 3 | 0 | 2 | 0 | MISMATCH (max diff 0.0177) |
+| hand/mbqc_chain4 | qiskit_o0 | 4 | 4 | 58 | 3 | 22 | 4 | 6 | 0 | 8 | 0 | match |
+| hand/mbqc_chain4 | qiskit_o3 | 4 | 4 | 41 | 3 | 18 | 4 | 6 | 0 | 6 | 0 | match |
+| hand/mbqc_chain4 | tket | n/a: NotImplementedError: Handling of Unary, Var, Binary and Expr conditions is not supported yet. |  |  |  |  |  |  |  |  |  |  |
 | hand/repetition3 | source | 5 | 2 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | reference |
 | hand/repetition3 | bqcp | 5 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | match |
 | hand/repetition3 | qiskit_o0 | 5 | 2 | 10 | 6 | 3 | 3 | 3 | 0 | 0 | 0 | match |

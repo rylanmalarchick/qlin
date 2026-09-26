@@ -31,9 +31,8 @@ a lower bound on what must stay runtime-decided.
   export, baseline runner. results/phase1.csv has 42 benchmarks x 5
   pipelines. The semantics guard reports 0 mismatches.
 
-  G1 FAILS AS WRITTEN. No benchmark has movable ops, before or after
-  bqcp. See the 2026-09-25 LOG entry for the cause. Waiting on a
-  decision from Rylan: apply the G1 pivot rule, or restate G1.
+  G1 restated (Rylan, 2026-09-25) and PASSED. Next: merge PR #2, then
+  Phase 2. Open item for Rylan: report the bqcp bug upstream or not.
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -258,13 +257,15 @@ Phase 1. Baselines and benchmarks.                           ~2 weeks
        fan-out.
   1.5  Run bqcp, Qiskit, and TKET on the same programs. Record the
        numbers each baseline reports.
-  G1   One table: every benchmark times every baseline, with dynamic-op
-       count and feedforward count. Also: after a bqcp pre-pass, at
-       least 3 benchmarks still have movable ops inside branches.
-       Pivot if fewer than 3: the fast path has no room on these
-       programs. Narrow to the QEC and RUS benchmarks and add more
-       dynamarq codes. If still fewer than 3, stop and write K1 alone
-       as a short note.
+  G1   (restated 2026-09-25, first version failed, see LOG) One table:
+       every benchmark times every baseline, with dynamic-op count and
+       feedforward count. Also: at least 3 benchmarks keep ff > 0 after
+       bqcp on a noise-aware reference (QEC with random errors), with no
+       guard mismatch. The two-armed hand benchmarks show that the M0
+       hoist and merge rules fire on real input.
+       Pivot if fewer than 3: stop and write K1 alone as a short note.
+       RESULT: PASS. 16 benchmarks, 5 of them noise-aware QEC variants
+       checked by the guard.
 
 Phase 2. Core bound and branch and bound.                    ~3 weeks
   2.1  Core lower bound: critical path through core ops, each paying
@@ -409,6 +410,9 @@ empirical, heuristic.
   2026-09-25  Bits fold only from classical facts (a bit before its
               first write is 0). Folding from quantum states is bqcp's
               job and runs as a separate pre-pass.
+  2026-09-25  G1 restated: gate on ff > 0 after bqcp on a noise-aware
+              reference, not on movable ops. Noise is a random X per data
+              qubit from one noise-source qubit. Noise ops do not count.
   2026-09-25  Python baselines run in a project uv env (bench/), not in
               stable or hot.
   2026-09-25  IR input: own text format for tests (Phase 0), jeff
@@ -460,6 +464,25 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-25  G1 restated and PASSED. Added noise-aware QEC variants
+              (*_noisy: random X, p = 0.05, per data qubit) and two
+              hand benchmarks with two-armed Ifs (mbqc_chain4,
+              decode_reset). 50 benchmarks x 5 pipelines.
+              - With noise, bqcp keeps every feedforward on the QEC codes
+                (repetition 3/5, five-qubit, Steane). 16 benchmarks keep
+                ff > 0 after bqcp with no guard mismatch.
+              - mbqc_chain4: movable = 4 (the shared h + measure in each
+                adaptive measurement). decode_reset: movable = 0, because
+                a switch lowered to nested if/else puts the shared resets
+                at different depths. A switch-aware merge is a Phase 2
+                move-set candidate.
+              - BQCP BUG. The guard flagged bqcp on mbqc_chain4 (max diff
+                0.0177). Qiskit Aer confirms it independently. Minimal
+                case: bench/repro_bqcp_branch_measure.py. When both arms
+                of an if/else measure into bit c1, bqcp keeps the old
+                known value of c1 (0) after the merge and removes a later
+                `if c1`. P(c2 = 1): source 0.497, bqcp 0.000. The row
+                stays in the table, marked MISMATCH.
   2026-09-25  Phase 1 built (branch phase1). G1 FAILS AS WRITTEN.
               Table: results/phase1.csv, results/phase1_table.md.
               - jeff: 29 of 37 files import. 8 fail with named reasons

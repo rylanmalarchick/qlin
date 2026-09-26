@@ -26,10 +26,14 @@ a lower bound on what must stay runtime-decided.
 
 1. CURRENT FOCUS (the handoff. Update it when it changes.)
 ==========================================================
-  STATE 2026-09-25. Plan v2 written. No code yet beyond the crate root.
-  Next: Phase 0, step 0.1 (commit the skeleton, add README.md and
-  AGENTS.md). Then step 0.2 (IR types).
+  STATE 2026-09-25 EOD. Phase 0 done (G0 passed, PR #1 merged). Phase 1
+  built on branch phase1: jeff importer, CLI, Qiskit bridge, dynamarq
+  export, baseline runner. results/phase1.csv has 42 benchmarks x 5
+  pipelines. The semantics guard reports 0 mismatches.
 
+  G1 FAILS AS WRITTEN. No benchmark has movable ops, before or after
+  bqcp. See the 2026-09-25 LOG entry for the cause. Waiting on a
+  decision from Rylan: apply the G1 pivot rule, or restate G1.
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -319,9 +323,20 @@ Phase 6. Write-up.                                           ~2 weeks
 ======================
 Benchmark set: section 6, steps 1.3 and 1.4.
 
-Metrics, per benchmark, per baseline, per t:
-  dyn     number of classically controlled ops left after the pass.
-  ff      number of feedforward edges on the critical path.
+Metrics, per benchmark, per baseline, per t. Phase 1 metrics come from
+`qlin stats`, one implementation for every tool:
+  qubits  qubit count.
+  m       live measure ops (a matched pair counts once).
+  gates   gate ops in the program text, in every arm. 2q: arity >= 2.
+  dyn     leaf ops inside an arm of a dynamic If or the body of a
+          dynamic loop.
+  ff      dynamic conditions: If conditions and loop exits that do not
+          fold to a constant.
+  core_b  core leaves under M0 in dynamic If arms.
+  core_l  leaves in dynamic loop bodies. They repeat on a measured bit.
+  mov     matched leaf pairs that hoist or merge out of a dynamic If.
+  dead    leaves in arms that constant folding proves never run.
+Phase 2 and later add:
   E[lat]  expected shot latency under cost model C and prior p(b).
   size    fast-path size, in ops and in precompiled segments.
   exit    exit probability P(b not in M_t).
@@ -329,6 +344,11 @@ Metrics, per benchmark, per baseline, per t:
   ctime   compile time.
 Baselines are reported on their own metrics too (gate count, depth, ff
 count). No table shows only a metric that only qlin wins on.
+
+Pipelines in Phase 1: source, bqcp (max_amplitudes 512, max_branches 4),
+qiskit_o0 and qiskit_o3 (basis rz sx x cx, no coupling map), tket
+(FullPeepholeOptimise, no swaps). The semantics guard compares output
+distributions from |0...0> on programs with <= 12 qubits.
 
 Labels on every number: modeled, emulated, or measured.
 
@@ -383,6 +403,14 @@ empirical, heuristic.
   2026-09-25  Defer is checked by channel comparison, not by trace
               equivalence.
   2026-09-25  Layout is a fixed input. Compensation is classical only.
+  2026-09-25  Loop body leaves are core with kind LoopRepeat: every
+              iteration after the first depends on the measured exit.
+              The first iteration is unconditional (unroll peels it).
+  2026-09-25  Bits fold only from classical facts (a bit before its
+              first write is 0). Folding from quantum states is bqcp's
+              job and runs as a separate pre-pass.
+  2026-09-25  Python baselines run in a project uv env (bench/), not in
+              stable or hot.
   2026-09-25  IR input: own text format for tests (Phase 0), jeff
               importer (Phase 1).
   2026-09-25  Soundness beyond BQCP: BQCP proves an ANALYSIS sound. qlin
@@ -432,6 +460,39 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-25  Phase 1 built (branch phase1). G1 FAILS AS WRITTEN.
+              Table: results/phase1.csv, results/phase1_table.md.
+              - jeff: 29 of 37 files import. 8 fail with named reasons
+                (multi-controlled gates in cmm, grover_5/7, multiplexer).
+              - dynamarq: 11 circuits exported (repetition 3 and 5,
+                five-qubit, Steane, long-range CNOT, fanout, CNOT
+                ladder, GHZ, IPE).
+              - Guard: 0 mismatches over 40 small benchmarks x 4
+                pipelines. Planted-error test rejects a missing
+                correction.
+              - TKET: 9 n/a. XOR-parity conditions (pytket-qiskit does
+                not read expr conditions), while loops (RUS), and a
+                CircBox error on repetition5.
+              Findings:
+              1. movable = 0 on every benchmark, before and after bqcp.
+                 Every If in the suite has an empty else arm, so hoist
+                 and merge have nothing to match. The G1 metric does
+                 not measure the fast-path idea, which acts on the
+                 dynamic conditions (ff), not on shared arm ops.
+              2. bqcp removes every feedforward on the repetition codes,
+                 Steane, iqft, and iqpe_5/7. The guard confirms each
+                 removal under ideal semantics from |0>. For QEC the
+                 noiseless syndrome is always 0, so the corrections are
+                 dead code. A noiseless |0> reference makes QEC
+                 benchmarks trivial for any propagation pass. For iqpe
+                 with an exact phase the bits are deterministic, as
+                 section 4 predicted.
+              3. Qiskit O3 and TKET do not reduce dyn or ff. O3 raises
+                 dyn on RUS and the five-qubit code (basis translation
+                 inside the arms).
+  2026-09-25  Phase 0 done. G0 passed: teleportation and 3-qubit
+              repetition cores match the hand analysis. 27 tests, each
+              core rule mutation-checked. PR #1 merged.
   2026-09-25  Plan v2. Added objective, definition of done (D1 to D5),
               scope in/out, contributions crosswalk, phase gates with
               pivot rules, evaluation protocol, soundness check method,

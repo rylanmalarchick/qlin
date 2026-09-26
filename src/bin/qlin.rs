@@ -6,13 +6,15 @@ use std::process::ExitCode;
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::Program;
 use qlin::sim::{basis_state, simulate};
-use qlin::stats::stats;
+use qlin::stats::stats_with_noise;
 use qlin::text::{parse, print};
 
 const USAGE: &str = "\
 usage:
   qlin import [--max-iters K] FILE.jeff   print the program as .qlin
-  qlin stats [--json] FILE.qlin           print program metrics
+  qlin stats [--json] [--noise-qubits I,J] FILE.qlin
+                                          print program metrics, without
+                                          the error-injection ops on noise qubits
   qlin sim FILE.qlin                      print the output distribution from |0...0> as JSON
   qlin fmt FILE.qlin                      print the program in canonical form
   qlin json FILE.qlin                     print the program tree as JSON";
@@ -44,12 +46,24 @@ fn run(args: &[String]) -> Result<String, String> {
             Ok(print(&prog))
         }
         "stats" => {
-            let (json, file) = match rest {
-                [flag, file] if flag == "--json" => (true, file),
-                [file] => (false, file),
-                _ => return Err(USAGE.into()),
-            };
-            let s = stats(&load(file)?);
+            let (file, flags) = rest.split_last().ok_or(USAGE)?;
+            let (mut json, mut noise) = (false, std::collections::BTreeSet::new());
+            let mut it = flags.iter();
+            for _ in 0..flags.len() {
+                match it.next().map(String::as_str) {
+                    Some("--json") => json = true,
+                    Some("--noise-qubits") => {
+                        let list = it.next().ok_or(USAGE)?;
+                        for q in list.split(',').filter(|x| !x.is_empty()) {
+                            let q = q.parse().map_err(|_| format!("bad qubit `{q}`"))?;
+                            noise.insert(qlin::ir::Qubit(q));
+                        }
+                    }
+                    Some(other) => return Err(format!("unknown flag `{other}`\n{USAGE}")),
+                    None => {}
+                }
+            }
+            let s = stats_with_noise(&load(file)?, &noise);
             if json {
                 serde_json::to_string(&s).map_err(|e| e.to_string())
             } else {

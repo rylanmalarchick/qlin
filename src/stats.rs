@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use serde::Serialize;
 
 use crate::analysis::core::{core, CoreKind};
-use crate::ir::{Block, Op, Program};
+use crate::ir::{Bit, Block, Op, Program, Qubit};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Stats {
@@ -82,4 +82,65 @@ pub fn stats(prog: &Program) -> Stats {
         movable: r.movable.len(),
         dead: r.dead.len(),
     }
+}
+
+/// Like [`stats`], but first removes error-injection ops: every leaf op on
+/// a noise qubit, and every If whose condition reads only bits measured
+/// from a noise qubit. Noise qubits do not count toward `qubits`.
+pub fn stats_with_noise(prog: &Program, noise: &BTreeSet<Qubit>) -> Stats {
+    let mut noise_bits = BTreeSet::new();
+    collect_noise_bits(&prog.body, noise, &mut noise_bits);
+    let stripped = Program {
+        n_qubits: prog.n_qubits,
+        n_bits: prog.n_bits,
+        body: strip(&prog.body, noise, &noise_bits),
+    };
+    let mut s = stats(&stripped);
+    s.qubits -= noise.iter().filter(|q| q.0 < prog.n_qubits).count() as u32;
+    s.bits -= noise_bits.len() as u32;
+    s
+}
+
+fn collect_noise_bits(block: &Block, noise: &BTreeSet<Qubit>, out: &mut BTreeSet<Bit>) {
+    for op in block {
+        match op {
+            Op::Measure { q, b } if noise.contains(q) => {
+                out.insert(*b);
+            }
+            Op::If { then_, else_, .. } => {
+                collect_noise_bits(then_, noise, out);
+                collect_noise_bits(else_, noise, out);
+            }
+            Op::Loop { body, .. } => collect_noise_bits(body, noise, out),
+            _ => {}
+        }
+    }
+}
+
+fn strip(block: &Block, noise: &BTreeSet<Qubit>, noise_bits: &BTreeSet<Bit>) -> Block {
+    let mut out = Block::new();
+    for op in block {
+        match op {
+            Op::Gate { qubits, .. } if qubits.iter().any(|q| noise.contains(q)) => {}
+            Op::Measure { q, .. } | Op::Reset { q } if noise.contains(q) => {}
+            Op::If { cond, .. } if !cond.bits().is_empty() && cond.bits().is_subset(noise_bits) => {
+            }
+            Op::If { cond, then_, else_ } => out.push(Op::If {
+                cond: cond.clone(),
+                then_: strip(then_, noise, noise_bits),
+                else_: strip(else_, noise, noise_bits),
+            }),
+            Op::Loop {
+                body,
+                until,
+                max_iters,
+            } => out.push(Op::Loop {
+                body: strip(body, noise, noise_bits),
+                until: until.clone(),
+                max_iters: *max_iters,
+            }),
+            other => out.push(other.clone()),
+        }
+    }
+    out
 }

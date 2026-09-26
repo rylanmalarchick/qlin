@@ -13,7 +13,9 @@ const USAGE: &str = "\
 usage:
   qlin import [--max-iters K] FILE.jeff   print the program as .qlin
   qlin stats [--json] FILE.qlin           print program metrics
-  qlin sim FILE.qlin                      print the output distribution from |0...0> as JSON";
+  qlin sim FILE.qlin                      print the output distribution from |0...0> as JSON
+  qlin fmt FILE.qlin                      print the program in canonical form
+  qlin json FILE.qlin                     print the program tree as JSON";
 
 /// Branch limit for `qlin sim`.
 const SIM_LIMIT: usize = 1 << 16;
@@ -72,6 +74,17 @@ fn run(args: &[String]) -> Result<String, String> {
             }
             let out = serde_json::json!({ "dist": dist, "truncated_prob": truncated });
             Ok(out.to_string())
+        }
+        "fmt" | "json" => {
+            let [file] = rest else {
+                return Err(USAGE.into());
+            };
+            let prog = load(file)?;
+            if cmd == "fmt" {
+                Ok(print(&prog))
+            } else {
+                serde_json::to_string(&prog).map_err(|e| e.to_string())
+            }
         }
         _ => Err(USAGE.into()),
     }

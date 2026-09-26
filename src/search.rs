@@ -12,13 +12,15 @@
 //! argument is hand-derived. [`Problem::exhaustive`] checks it on every
 //! prefix.
 
+use std::cell::Cell;
+
 use serde::Serialize;
 
 use crate::check::{equivalent, inputs, CheckError};
 use crate::cost::CostModel;
 use crate::ir::Program;
 use crate::latency::{expected, records, Noise, Record, ReplayError};
-use crate::sim::SimError;
+use crate::sim::{SimError, MAX_QUBITS};
 use crate::transform::defer::{apply, candidates, Candidate, Choice, Variant};
 
 /// Two latencies closer than this are equal.
@@ -87,6 +89,9 @@ pub struct Problem<'a> {
     pub noise: Noise,
     /// When set, every scored leaf is checked against `prog` by simulation.
     pub check_leaves: bool,
+    /// Leaves checked, and leaves too large to simulate, since `new`.
+    pub checked: Cell<usize>,
+    pub unchecked: Cell<usize>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -123,6 +128,8 @@ impl<'a> Problem<'a> {
             cost,
             noise,
             check_leaves: false,
+            checked: Cell::new(0),
+            unchecked: Cell::new(0),
         })
     }
 
@@ -143,7 +150,9 @@ impl<'a> Problem<'a> {
             .map(|&d| if d { Choice::Defer } else { Choice::Classical })
             .collect();
         let v = self.variant(&choices);
-        if self.check_leaves {
+        if self.check_leaves && v.prog.n_qubits > MAX_QUBITS {
+            self.unchecked.set(self.unchecked.get() + 1);
+        } else if self.check_leaves {
             equivalent(
                 self.prog,
                 &v.prog,
@@ -151,6 +160,7 @@ impl<'a> Problem<'a> {
                 1 << 16,
             )
             .map_err(SearchError::Check)?;
+            self.checked.set(self.checked.get() + 1);
         }
         let (mean, worst) = self.mean(&v)?;
         Ok(Point {

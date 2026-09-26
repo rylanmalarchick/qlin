@@ -121,6 +121,8 @@ fn opt(prog: &Program, f: &Flags) -> Result<String, String> {
         "floor": floor,
         "exhaustive": exhaustive,
         "bnb": bnb,
+        "leaves_checked": problem.checked.get(),
+        "leaves_unchecked": problem.unchecked.get(),
         "program": print(&best),
     });
     Ok(report.to_string())

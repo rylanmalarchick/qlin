@@ -1,0 +1,32 @@
+bqcp bug: stale bit value after an if/else that measures in both arms
+=====================================================================
+Found 2026-09-25 by the Phase 1 semantics guard on
+benchmarks/hand/mbqc_chain4.qlin (bqcp row, max diff 0.0177).
+Confirmed independently with Qiskit Aer.
+Status: NOT REPORTED upstream. Rylan decides when (after our work).
+
+bqcp: github.com/1nnocenzo/bqcp, commit
+df2f4c2347f729eee9c1abf21ef26e7989bb4d1c, src/ConstantPropagation.py,
+called as ConstantPropagation.optimize(qc, max_amplitudes=512,
+max_branches=4).
+
+Reproducer: bench/repro_bqcp_branch_measure.py
+  h q0; measure q0 -> c0
+  if c0 { h q1; measure q1 -> c1 } else { h q1; measure q1 -> c1 }
+  if c1 { x q2 }
+  measure q2 -> c2
+Aer, 100k shots: source P(c2 = 1) = 0.497, bqcp output P(c2 = 1) = 0.000.
+bqcp removes `if c1 { x q2 }`, as if c1 still held its initial 0.
+
+Likely cause (not checked in the bqcp source): when the branches of
+the if/else merge, the clbit state for c1 comes from before the If,
+not from the measurements inside the arms. Suspects: _merge_clbit_states
+or how _optimize_classic_controlled_operation updates clbit states.
+On mbqc_chain4 the same pass also dropped rz ops inside the arms.
+
+Draft issue (for Rylan to edit before filing):
+  Title: Constant propagation keeps a stale clbit after if/else arms
+         measure into it
+  Body: minimal circuit above, the two Aer numbers, the bqcp commit,
+        and the call arguments. Ask whether measurements inside
+        control-flow blocks are in scope for the pass.

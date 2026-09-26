@@ -1,0 +1,42 @@
+# Written to exercise M0 moves. A 4-qubit 1D cluster state, measured
+# qubit by qubit. The sign of each measurement angle depends on the
+# previous outcome, and the front end writes the whole adaptive
+# measurement in both arms. The common `h` and `measure` merge.
+qubits 4
+bits 4
+h q0
+h q1
+h q2
+h q3
+cz q0 q1
+cz q1 q2
+cz q2 q3
+rz(0.3) q0
+h q0
+measure q0 -> c0
+if c0 {
+  rz(-0.5) q1
+  h q1
+  measure q1 -> c1
+} else {
+  rz(0.5) q1
+  h q1
+  measure q1 -> c1
+}
+if c1 {
+  rz(-0.7) q2
+  h q2
+  measure q2 -> c2
+} else {
+  rz(0.7) q2
+  h q2
+  measure q2 -> c2
+}
+if c2 {
+  x q3
+}
+if c1 ^ c0 {
+  z q3
+}
+h q3
+measure q3 -> c3

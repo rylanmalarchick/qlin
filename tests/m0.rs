@@ -71,6 +71,7 @@ fn checker_rejects_a_wrong_rewrite() {
 }
 
 #[test]
+#[ignore = "full suite: run by CI job full"]
 fn normal_form_is_equivalent_on_every_small_benchmark() {
     let all = small_benchmarks();
     assert!(all.len() >= 45, "{}", all.len());
@@ -82,6 +83,7 @@ fn normal_form_is_equivalent_on_every_small_benchmark() {
 }
 
 #[test]
+#[ignore = "full suite: run by CI job full"]
 fn normal_form_is_optimal_among_prefix_applications() {
     let c = CostModel::HERON_LIKE;
     let mut certified = 0;

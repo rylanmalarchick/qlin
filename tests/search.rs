@@ -48,6 +48,7 @@ fn teleportation_best_is_both_deferred() {
 }
 
 #[test]
+#[ignore = "full suite: run by CI job full"]
 fn bnb_matches_exhaustive_on_every_small_benchmark() {
     let (mut certified, mut skipped) = (Vec::new(), Vec::new());
     for dir in ["benchmarks/hand", "benchmarks/jeff", "benchmarks/dynamarq"] {

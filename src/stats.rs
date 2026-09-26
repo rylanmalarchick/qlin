@@ -84,9 +84,6 @@ pub fn stats(prog: &Program) -> Stats {
     }
 }
 
-/// Like [`stats`], but first removes error-injection ops: every leaf op on
-/// a noise qubit, and every If whose condition reads only bits measured
-/// from a noise qubit. Noise qubits do not count toward `qubits`.
 /// Bits written by a measurement of a noise qubit.
 pub fn noise_bits(prog: &Program, noise: &BTreeSet<Qubit>) -> BTreeSet<Bit> {
     let mut out = BTreeSet::new();
@@ -94,6 +91,9 @@ pub fn noise_bits(prog: &Program, noise: &BTreeSet<Qubit>) -> BTreeSet<Bit> {
     out
 }
 
+/// Like [`stats`], but first removes error-injection ops: every leaf op on
+/// a noise qubit, and every If whose condition reads only bits measured
+/// from a noise qubit. Noise qubits do not count toward `qubits`.
 pub fn stats_with_noise(prog: &Program, noise: &BTreeSet<Qubit>) -> Stats {
     let noise_bits = noise_bits(prog, noise);
     let stripped = Program {

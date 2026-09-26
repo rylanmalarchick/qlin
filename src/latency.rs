@@ -110,6 +110,9 @@ struct Replay<'a> {
     vals: Vec<bool>,
     meas_end: Vec<Option<f64>>,
     ready: Vec<f64>,
+    /// Set when a loop hits `max_iters` without its exit. The run stops
+    /// there, as in the simulator.
+    stopped: bool,
 }
 
 impl Replay<'_> {
@@ -153,6 +156,9 @@ impl Replay<'_> {
         gates: &[Bit],
     ) -> Result<(), ReplayError> {
         for (i, op) in block.iter().enumerate() {
+            if self.stopped {
+                return Ok(());
+            }
             path.push(i);
             self.op(op, path, gates)?;
             path.pop();
@@ -218,16 +224,19 @@ impl Replay<'_> {
                 max_iters,
             } => {
                 let mut inner = gates.to_vec();
+                let mut exited = false;
                 for iter in 0..*max_iters {
                     if iter == 1 {
                         inner.extend(until.bits());
                     }
                     self.arm(body, path, 0, &inner)?;
                     let vals = &self.vals;
-                    if until.eval(&|b: Bit| vals[b.0 as usize]) {
+                    exited = self.stopped || until.eval(&|b: Bit| vals[b.0 as usize]);
+                    if exited {
                         break;
                     }
                 }
+                self.stopped |= !exited;
             }
         }
         Ok(())
@@ -263,6 +272,7 @@ pub fn replay(
         vals: vec![false; prog.n_bits as usize],
         meas_end: vec![None; prog.n_bits as usize],
         ready: vec![0.0; prog.n_qubits as usize],
+        stopped: false,
     };
     r.block(&prog.body, &mut Vec::new(), &[])?;
     Ok(r.ready.iter().copied().fold(0.0, f64::max))

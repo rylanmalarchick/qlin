@@ -10,6 +10,7 @@ pub mod builder;
 pub mod cost;
 pub mod import;
 pub mod ir;
+pub mod latency;
 pub mod sim;
 pub mod stats;
 pub mod text;

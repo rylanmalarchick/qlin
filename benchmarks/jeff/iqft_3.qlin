@@ -1,0 +1,20 @@
+qubits 1
+bits 3
+h q0
+measure q0 -> c0
+reset q0
+if c0 {
+  p(1.5707963267948966) q0
+}
+h q0
+measure q0 -> c1
+reset q0
+if c1 {
+  p(1.5707963267948966) q0
+}
+if c0 {
+  p(0.7853981633974483) q0
+}
+h q0
+measure q0 -> c2
+reset q0

@@ -1,0 +1,16 @@
+qubits 7
+bits 7
+h q0
+cx q0 q1
+cx q0 q2
+cx q0 q3
+cx q0 q4
+cx q0 q5
+cx q0 q6
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2
+measure q3 -> c3
+measure q4 -> c4
+measure q5 -> c5
+measure q6 -> c6

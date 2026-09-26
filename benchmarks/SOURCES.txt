@@ -1,0 +1,15 @@
+Benchmark sources
+=================
+
+benchmarks/hand/
+  Hand-written programs.
+
+benchmarks/jeff/src/*.jeff
+  From github.com/unitaryfoundation/jeff, benchmarks/structured,
+  commit 32c323585792d8d30426a6550be9032ef5b0f3ae (2026-09-21).
+  Apache License 2.0, copy in benchmarks/jeff/src/LICENSE.
+
+benchmarks/jeff/*.qlin
+  Output of `qlin import` (default --max-iters 8) on each file above.
+  Files that do not import have no .qlin. The test
+  tests/import_jeff.rs checks that each .qlin matches a fresh import.

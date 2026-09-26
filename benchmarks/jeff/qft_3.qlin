@@ -1,0 +1,11 @@
+qubits 3
+bits 3
+h q2
+cp(1.5707963267948966) q1 q2
+cp(0.7853981633974483) q0 q2
+h q1
+cp(1.5707963267948966) q0 q1
+h q0
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2

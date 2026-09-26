@@ -1,0 +1,41 @@
+# Written to exercise M0 moves. A 3-qubit repetition round whose decoder
+# is lowered from a switch into nested if/else: each case applies its
+# correction, then resets both ancillas. Under M0 every reset stays core:
+# a reset that merges out of the inner If is still inside an outer arm,
+# and the outer arms do not match because one side is a nested If.
+qubits 5
+bits 5
+x q0
+cx q0 q1
+cx q1 q2
+h q2
+h q2
+cx q0 q3
+cx q1 q3
+cx q1 q4
+cx q2 q4
+measure q3 -> c3
+measure q4 -> c4
+if c3 & !c4 {
+  x q0
+  reset q3
+  reset q4
+} else {
+  if c3 & c4 {
+    x q1
+    reset q3
+    reset q4
+  } else {
+    if !c3 & c4 {
+      x q2
+      reset q3
+      reset q4
+    } else {
+      reset q3
+      reset q4
+    }
+  }
+}
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2

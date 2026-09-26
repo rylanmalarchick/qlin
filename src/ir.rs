@@ -7,10 +7,12 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+use serde::{Serialize, Serializer};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct Qubit(pub u32);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct Bit(pub u32);
 
 /// Gate kinds. `Custom` is an opaque symbol: the analysis compares it by
@@ -108,7 +110,7 @@ impl Gate {
 }
 
 /// A boolean expression over classical bits.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum BitExpr {
     Const(bool),
     Bit(Bit),
@@ -176,7 +178,7 @@ impl BitExpr {
 
 pub type Block = Vec<Op>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum Op {
     Gate {
         gate: Gate,
@@ -202,6 +204,13 @@ pub enum Op {
         until: BitExpr,
         max_iters: u32,
     },
+}
+
+/// A gate serializes as its text name.
+impl Serialize for Gate {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.name())
+    }
 }
 
 /// Qubits and bits an op touches, used to decide if two ops commute.
@@ -265,7 +274,7 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Program {
     pub n_qubits: u32,
     pub n_bits: u32,

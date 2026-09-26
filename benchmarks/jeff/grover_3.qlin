@@ -1,0 +1,16 @@
+qubits 2
+bits 2
+h q0
+h q1
+cz q0 q1
+h q0
+h q1
+x q0
+x q1
+cz q0 q1
+x q0
+x q1
+h q0
+h q1
+measure q0 -> c0
+measure q1 -> c1

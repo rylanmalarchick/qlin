@@ -1,0 +1,40 @@
+qubits 8
+bits 2
+loop max 8 {
+  u(1.5707963267948966, 0.7853981633974483, -3.141592653589793) q0
+  cx q0 q1
+  cx q0 q2
+  cx q0 q3
+  cx q0 q4
+  cx q0 q5
+  cx q0 q6
+  cx q0 q7
+  h q0
+  cx q0 q1
+  cx q0 q2
+  cx q0 q3
+  cx q0 q4
+  cx q0 q5
+  cx q0 q6
+  cx q0 q7
+  u(1.5707963267948966, 0.0, -2.356194490192345) q0
+  measure q0 -> c0
+  if c0 {
+    x q0
+  }
+} until !c0
+sdg q1
+h q1
+h q2
+h q3
+h q4
+h q5
+h q6
+h q7
+cx q2 q1
+cx q3 q1
+cx q4 q1
+cx q5 q1
+cx q6 q1
+cx q7 q1
+measure q1 -> c1

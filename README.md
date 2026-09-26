@@ -6,8 +6,8 @@ that must be decided at runtime, precompiles a fast path for likely
 measurement outcomes, and keeps a correct fallback for the rest.
 
 Status: early development. The crate has the IR, the `.qlin` text format,
-the dynamic-core analysis, a trace enumerator, and a small state-vector
-simulator used as a test oracle.
+the dynamic-core analysis, a trace enumerator, a small state-vector
+simulator used as a test oracle, and an importer for jeff files.
 
 ## Build and test
 
@@ -17,6 +17,31 @@ cargo test
 ```
 
 Requires Rust 1.85 or later.
+
+## Command line
+
+```
+qlin import [--max-iters K] FILE.jeff   # jeff -> .qlin
+qlin stats [--json] FILE.qlin           # program metrics
+qlin sim FILE.qlin                      # output distribution from |0...0>
+qlin fmt FILE.qlin                      # canonical form
+qlin json FILE.qlin                     # program tree as JSON
+```
+
+## Baselines
+
+`bench/` runs bqcp, Qiskit, and TKET on every file in `benchmarks/` and
+writes `results/phase1.csv`. It needs [uv](https://docs.astral.sh/uv/)
+and a clone of [bqcp](https://github.com/1nnocenzo/bqcp).
+
+```
+cargo build --release
+git clone https://github.com/1nnocenzo/bqcp ~/dev/oss/bqcp   # or set BQCP_PATH
+uv run --project bench pytest bench
+uv run --project bench python bench/run_baselines.py
+```
+
+`bench/export_dynamarq.py` regenerates `benchmarks/dynamarq/`.
 
 ## The `.qlin` text format
 

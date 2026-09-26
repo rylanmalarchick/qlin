@@ -7,7 +7,9 @@
 
 pub mod analysis;
 pub mod builder;
+pub mod import;
 pub mod ir;
 pub mod sim;
+pub mod stats;
 pub mod text;
 pub mod trace;

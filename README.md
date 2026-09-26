@@ -7,7 +7,9 @@ measurement outcomes, and keeps a correct fallback for the rest.
 
 Status: early development. The crate has the IR, the `.qlin` text format,
 the dynamic-core analysis, a trace enumerator, a small state-vector
-simulator used as a test oracle, and an importer for jeff files.
+simulator used as a test oracle, an importer for jeff files, a
+latency model, and a search that chooses which classically controlled
+Ifs to replace by coherent control ("defer").
 
 ## Build and test
 
@@ -26,7 +28,15 @@ qlin stats [--json] FILE.qlin           # program metrics
 qlin sim FILE.qlin                      # output distribution from |0...0>
 qlin fmt FILE.qlin                      # canonical form
 qlin json FILE.qlin                     # program tree as JSON
+qlin opt [--tff NS] [--noise-qubits I] [--check] [--json] FILE.qlin
+                                        # defer search, best program or report
 ```
+
+`qlin opt` puts the program in M0 normal form (hoist and merge out of
+Ifs), then searches the defer choices. Latency is the expected makespan
+over exact outcome probabilities (programs up to 12 qubits), under the
+`HERON_LIKE` cost model in `src/cost.rs`. `--check` verifies every scored
+variant by simulation.
 
 ## Baselines
 
@@ -42,6 +52,8 @@ uv run --project bench python bench/run_baselines.py
 ```
 
 `bench/export_dynamarq.py` regenerates `benchmarks/dynamarq/`.
+`bench/run_phase2.py` runs `qlin opt` on every benchmark over a t_ff sweep
+and writes `results/phase2.csv` and `results/phase2.md`.
 
 ## The `.qlin` text format
 

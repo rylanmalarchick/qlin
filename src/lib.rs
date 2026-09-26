@@ -7,9 +7,14 @@
 
 pub mod analysis;
 pub mod builder;
+pub mod check;
+pub mod cost;
 pub mod import;
 pub mod ir;
+pub mod latency;
+pub mod search;
 pub mod sim;
 pub mod stats;
 pub mod text;
 pub mod trace;
+pub mod transform;

@@ -10,6 +10,10 @@
 - `src/sim.rs`: dense state-vector simulator, test oracle only.
 - `src/import/jeff.rs`: jeff importer (partial evaluation of the classical part).
 - `src/stats.rs`: metrics for the baseline table. `src/bin/qlin.rs`: CLI.
+- `src/cost.rs`: cost model. `src/latency.rs`: outcome records and replay latency.
+- `src/check.rs`: equivalence check by simulation (distribution + state witnesses).
+- `src/transform/m0.rs`: M0 normal form. `src/transform/defer.rs`: defer rewrite.
+- `src/search.rs`: exhaustive and branch-and-bound search over defer choices.
 - `bench/`: Python (uv project). Qiskit bridge, dynamarq export, baseline runner.
 - `benchmarks/`: `hand/`, `jeff/` (vendored `.jeff` + golden `.qlin`), `dynamarq/`.
   `benchmarks/SOURCES.txt` records origins and commits.
@@ -31,4 +35,8 @@
 - The simulator rejects programs with more than 12 qubits.
 - After changing the importer or the printer, regenerate `benchmarks/jeff/*.qlin`.
   `tests/import_jeff.rs` fails on any drift.
+- Latency, the search, and the checks need exact simulation: 12 qubits at most,
+  including defer copy qubits. Larger cases are reported as skipped or unchecked.
+- Some tests pin exact counts (benchmarks certified, variants checked). A new
+  benchmark changes them. Update the pinned number and its comment together.
 - bqcp has no license. Call it from a clone. Do not copy its code into this repo.

@@ -13,3 +13,11 @@ benchmarks/jeff/*.qlin
   Output of `qlin import` (default --max-iters 8) on each file above.
   Files that do not import have no .qlin. The test
   tests/import_jeff.rs checks that each .qlin matches a fresh import.
+
+benchmarks/dynamarq/*.qlin
+  Output of bench/export_dynamarq.py on dynamarq
+  (github.com/sumeetshirgure/dynamarq, commit
+  cd6306c6749d97d8b4ab4b20ee500c147ec0735a, MIT) with mcm=True.
+  qiskit_ibm_runtime MidCircuitMeasure is written as `measure`.
+  Barriers are dropped. For the gate benchmarks (fanout, long-range CNOT,
+  CNOT ladder) only the first direct-fidelity-estimation sample is kept.

@@ -1,0 +1,36 @@
+qubits 9
+bits 9
+h q0
+h q1
+h q2
+h q3
+h q4
+cx q0 q5
+cx q1 q6
+cx q2 q7
+cx q3 q8
+cx q1 q5
+cx q2 q6
+cx q3 q7
+cx q4 q8
+measure q5 -> c5
+measure q6 -> c6
+measure q7 -> c7
+measure q8 -> c8
+if c5 {
+  x q1
+}
+if c6 ^ c5 {
+  x q2
+}
+if c7 ^ (c6 ^ c5) {
+  x q3
+}
+if c8 ^ (c7 ^ (c6 ^ c5)) {
+  x q4
+}
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2
+measure q3 -> c3
+measure q4 -> c4

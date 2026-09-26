@@ -57,11 +57,12 @@ pub fn core(prog: &Program) -> CoreReport {
     w.report
 }
 
-type Known = Vec<Option<bool>>;
+/// Per bit: `Some(v)` when its classical value is known, else `None`.
+pub type Known = Vec<Option<bool>>;
 
 /// Returns the constant value of `cond` over every value of its unknown
 /// bits, or `None` if it is not constant.
-fn fold(cond: &BitExpr, known: &Known) -> Option<bool> {
+pub fn fold(cond: &BitExpr, known: &Known) -> Option<bool> {
     let unknown: Vec<Bit> = cond
         .bits()
         .into_iter()
@@ -91,7 +92,7 @@ fn fold(cond: &BitExpr, known: &Known) -> Option<bool> {
     }
 }
 
-fn writes(blocks: &[&Block]) -> BTreeSet<Bit> {
+pub fn writes(blocks: &[&Block]) -> BTreeSet<Bit> {
     blocks
         .iter()
         .flat_map(|b| b.iter())
@@ -147,19 +148,26 @@ fn back_candidates(rem: &[usize], fps: &[Footprint]) -> Vec<usize> {
         .collect()
 }
 
-/// Matches ops of `a` and `b` by hoist then merge. Returns the matched
-/// index pairs and the unmatched indices of each arm.
-fn match_arms(
-    cond: &BitExpr,
-    a: &Block,
-    b: &Block,
-) -> (Vec<(usize, usize)>, Vec<usize>, Vec<usize>) {
+/// The result of matching two arms. Pairs are `(index in a, index in b)`,
+/// in the order they were matched.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Matches {
+    /// Moved to the front, in order: place them before the If in this order.
+    pub hoisted: Vec<(usize, usize)>,
+    /// Moved to the back, last first: place them after the If in reverse.
+    pub merged: Vec<(usize, usize)>,
+    pub rest_a: Vec<usize>,
+    pub rest_b: Vec<usize>,
+}
+
+/// Matches ops of `a` and `b` by hoist, then merge.
+pub fn match_arms(cond: &BitExpr, a: &Block, b: &Block) -> Matches {
     let fa: Vec<Footprint> = a.iter().map(Op::footprint).collect();
     let fb: Vec<Footprint> = b.iter().map(Op::footprint).collect();
     let cond_bits = cond.bits();
     let mut rem_a: Vec<usize> = (0..a.len()).collect();
     let mut rem_b: Vec<usize> = (0..b.len()).collect();
-    let mut pairs = Vec::new();
+    let (mut hoisted, mut merged) = (Vec::new(), Vec::new());
 
     for _ in 0..a.len().min(b.len()) {
         let cb = front_candidates(&rem_b, &fb);
@@ -172,7 +180,7 @@ fn match_arms(
                     .map(|&kb| (ka, kb))
             });
         let Some((ka, kb)) = found else { break };
-        pairs.push((rem_a.remove(ka), rem_b.remove(kb)));
+        hoisted.push((rem_a.remove(ka), rem_b.remove(kb)));
     }
 
     for _ in 0..rem_a.len().min(rem_b.len()) {
@@ -183,10 +191,15 @@ fn match_arms(
                 .map(|&kb| (ka, kb))
         });
         let Some((ka, kb)) = found else { break };
-        pairs.push((rem_a.remove(ka), rem_b.remove(kb)));
+        merged.push((rem_a.remove(ka), rem_b.remove(kb)));
     }
 
-    (pairs, rem_a, rem_b)
+    Matches {
+        hoisted,
+        merged,
+        rest_a: rem_a,
+        rest_b: rem_b,
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -302,7 +315,9 @@ impl Walker {
         entry: &Known,
         mode: Mode,
     ) {
-        let (pairs, rest_a, rest_b) = match_arms(cond, then_, else_);
+        let m = match_arms(cond, then_, else_);
+        let (rest_a, rest_b) = (m.rest_a, m.rest_b);
+        let pairs: Vec<(usize, usize)> = m.hoisted.into_iter().chain(m.merged).collect();
         for i in rest_a {
             self.op(
                 &then_[i],

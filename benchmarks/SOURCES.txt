@@ -2,7 +2,8 @@ Benchmark sources
 =================
 
 benchmarks/hand/
-  Hand-written programs.
+  Hand-written programs. mbqc_chain4 and decode_reset are written to
+  exercise the M0 moves (two-armed Ifs). They are not drawn from a suite.
 
 benchmarks/jeff/src/*.jeff
   From github.com/unitaryfoundation/jeff, benchmarks/structured,
@@ -21,3 +22,10 @@ benchmarks/dynamarq/*.qlin
   qiskit_ibm_runtime MidCircuitMeasure is written as `measure`.
   Barriers are dropped. For the gate benchmarks (fanout, long-range CNOT,
   CNOT ladder) only the first direct-fidelity-estimation sample is kept.
+
+benchmarks/dynamarq/*_noisy.qlin
+  The QEC circuits with a random X error on each data qubit (probability
+  0.05), placed just before the first gate on a syndrome ancilla. The last
+  qubit is the noise source: ry, measure, `if e { x dI }`, reset, once per
+  data qubit. Metrics use `qlin stats --noise-qubits LAST` so the
+  injection ops do not count.

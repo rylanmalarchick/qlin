@@ -7,6 +7,7 @@
 
 pub mod analysis;
 pub mod builder;
+pub mod cost;
 pub mod import;
 pub mod ir;
 pub mod sim;

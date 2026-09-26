@@ -26,13 +26,12 @@ a lower bound on what must stay runtime-decided.
 
 1. CURRENT FOCUS (the handoff. Update it when it changes.)
 ==========================================================
-  STATE 2026-09-25 EOD. Phase 0 done (G0 passed, PR #1 merged). Phase 1
-  built on branch phase1: jeff importer, CLI, Qiskit bridge, dynamarq
-  export, baseline runner. results/phase1.csv has 42 benchmarks x 5
-  pipelines. The semantics guard reports 0 mismatches.
-
-  G1 restated (Rylan, 2026-09-25) and PASSED. Next: merge PR #2, then
-  Phase 2. Open item for Rylan: report the bqcp bug upstream or not.
+  STATE 2026-09-25 (late). Phases 0 and 1 merged. Phase 2 built on
+  branch phase2. G2 PASSED: branch and bound = exhaustive optimum on
+  180 of 180 certified rows, 0 bound violations, 3046 search variants
+  checked by simulation (26 over 12 qubits not checked).
+  Next: merge the phase2 PR, then Phase 3 (fast path over M_t).
+  Open for Rylan: report the bqcp bug upstream (notes/bqcp-bug.txt).
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -267,16 +266,32 @@ Phase 1. Baselines and benchmarks.                           ~2 weeks
        RESULT: PASS. 16 benchmarks, 5 of them noise-aware QEC variants
        checked by the guard.
 
-Phase 2. Core bound and branch and bound.                    ~3 weeks
-  2.1  Core lower bound: critical path through core ops, each paying
-       measure time plus feedforward latency from C.
-  2.2  Branch and bound over move choices, pruned by the core bound.
-  2.3  Exhaustive search on the smallest programs, as the certifier.
-  G2   On every small benchmark, exhaustive search and branch and bound
-       give the same optimum. The core bound is at or below that optimum
-       on every benchmark (a bound above the optimum is a bug).
-       Pivot if B&B does not scale past the smallest programs: keep it
-       as the certifier and use a labelled heuristic above that size.
+Phase 2. M0 normal form, defer, and branch and bound.     ~3 weeks
+  (Restated 2026-09-25 by Rylan. Under a dependency-graph latency model
+  every M0 move only removes waits, so the M0 normal form is optimal
+  among M0 moves and the search target is the defer choice.)
+  2.1  Cost model C = (t_1q, t_2q, t_3q, t_meas, t_reset, t_ff), with
+       t_1q <= t_2q <= t_3q. Preset HERON_LIKE (assumed starting values).
+  2.2  Replay latency, ideal controller: per executed trace, an op starts
+       when its qubits are free and, if classically conditioned, when
+       each condition bit's measure ends plus t_ff. E[lat] over exact
+       outcome records from one simulation of the source (<= 12 qubits).
+  2.3  M0 normal form: fold constant Ifs, hoist, merge.
+  2.4  Certifier: normal form vs every prefix of each top-level If's
+       hoist and merge sequences.
+  2.5  Defer of a top-level If: controlled gates on the measured qubit
+       (direct, measure moved later) or on a copy ancilla.
+  2.6  Soundness check by simulation: output distribution and state
+       witnesses, from |0> and 8 seeded product states.
+  2.7  Search: exhaustive (k <= 12) with the Pareto front, and branch
+       and bound with the relaxation bound (undecided Ifs classical, no
+       feedforward wait).
+  G2   On every benchmark with <= 12 qubits and <= 12 candidates:
+       B&B optimum = exhaustive optimum, 0 bound violations, M0 normal
+       form optimal among prefix applications, every scored variant
+       passes the simulation check.
+       Pivot: any violation is a bug, so fix it before Phase 3.
+       RESULT: PASS (results/phase2.md).
 
 Phase 3. Fast path, exit edges, fallback.                    ~3 weeks
   3.1  Decision tree over prefixes in M_t.
@@ -377,20 +392,29 @@ the trace itself. So:
 Statuses: target, hand-derived, machine-checked (Lean or exhaustive),
 empirical, heuristic.
 
-  C1  Core lower bound on makespan, for move set M0.          target
-  C2  With defer in the move set, the core can shrink to zero
-      (teleportation becomes a fully coherent circuit). So C1 names M0,
-      and the objective is cost, not core size.           hand-derived
-  C3  Soundness S1, S2 for moves in M0.                       target
-  C4  Branch and bound finds the optimum on small inputs.     target,
-      check by exhaustive search
-  C5  Expected-latency gain on benchmarks.         empirical, not run
+  C1  The M0 normal form minimizes replay latency among prefix
+      applications of M0 moves.        hand-derived (monotone longest
+      path), machine-checked by exhaustive search on 45+ benchmarks
+  C2  With defer in the move set, the classical core can shrink to zero
+      (teleportation becomes a fully coherent circuit). So the objective
+      is cost, not core size.                          hand-derived,
+      shown on teleportation (results/phase2.md)
+  C3  Soundness S1, S2 for moves in M0.       empirical (simulation
+      check of the normal form on every small benchmark)
+  C4  Branch and bound finds the optimum on small inputs.
+                        machine-checked (exhaustive, 180 of 180 rows)
+  C5  Expected-latency gain on benchmarks.   modeled, HERON_LIKE (an
+      assumed cost model, not measured). See the LOG.
   C6  Cost model ranks variants correctly on device X.
                                                    empirical, not run
-  C7  Defer preserves the output distribution (S3 for defer).
-                                                   target, simulator
+  C7  Defer preserves the output distribution and state (S3 for defer).
+      empirical (simulation check, finite inputs and witnesses: sound,
+      not complete)
   C8  Fast-path size stays within S for t <= 2 on the QEC benchmarks.
                                                    empirical, not run
+  C9  The relaxation (undecided Ifs without feedforward wait) is a lower
+      bound on every completion. hand-derived, checked on every prefix
+      of 180 exhaustive rows (0 violations)
 
 
 10. DECISIONS
@@ -413,6 +437,12 @@ empirical, heuristic.
   2026-09-25  G1 restated: gate on ff > 0 after bqcp on a noise-aware
               reference, not on movable ops. Noise is a random X per data
               qubit from one noise-source qubit. Noise ops do not count.
+  2026-09-25  Phase 2 searches defer choices, not M0 moves (Rylan).
+  2026-09-25  Phase 2 latency model is the ideal controller. The IBM
+              block-sync model moves to Phase 4.
+  2026-09-25  The equivalence check compares state witnesses <v|rho|v>
+              per classical outcome, not only the bit distribution. The
+              bit-only check missed a Z/X swap on an unmeasured qubit.
   2026-09-25  Python baselines run in a project uv env (bench/), not in
               stable or hot.
   2026-09-25  IR input: own text format for tests (Phase 0), jeff
@@ -464,6 +494,32 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-25  Phase 2 built (branch phase2). G2 PASSED.
+              Numbers are modeled: cost model HERON_LIKE (assumed), t_ff
+              swept over 0, 150, 600, 2400 ns. results/phase2.md.
+              - 47 benchmarks evaluated, 3 skipped (over 12 qubits).
+              - Branch and bound on iqft_7 (21 candidates): 2489 of
+                4.2M tree nodes. Not certified by exhaustive search.
+              Findings:
+              1. Defer wins on teleportation (jeff), mbqc_chain4, and the
+                 dynamarq gate benchmarks at every t_ff, including 0. A
+                 classical correction still waits for the measurement to
+                 end (800 ns). A coherent one does not. At t_ff = 600:
+                 jeff teleportation 2090 -> 1136, mbqc_chain4
+                 4632 -> 1604, five_qubit_code 4278 -> 3565.
+              2. The M0 normal form never lowers latency on this suite.
+                 Only merges fire, and a merged op still waits on the arm
+                 op before it on the same qubit.
+              3. repetition3 never defers: its 2-literal corrections
+                 become ccx (t_3q assumed 408 ns). repetition5 has no
+                 candidates: its decoder reads 4-bit conjunctions.
+              4. iqft and iqpe defer only at t_ff = 2400. Their qubit
+                 reuse forces copy ancillas.
+              5. Deferring adds 2q gates (+2 to +12 per program). This is
+                 the error axis, not priced in the latency objective.
+              Fixes during the phase: replay now stops at loop truncation
+              (as the simulator does). The check now compares state
+              witnesses (see DECISIONS).
   2026-09-25  G1 restated and PASSED. Added noise-aware QEC variants
               (*_noisy: random X, p = 0.05, per data qubit) and two
               hand benchmarks with two-armed Ifs (mbqc_chain4,

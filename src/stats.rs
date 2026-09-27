@@ -160,3 +160,10 @@ fn strip(block: &Block, noise: &BTreeSet<Qubit>, noise_bits: &BTreeSet<Bit>) -> 
     }
     out
 }
+
+/// True when `block` holds a Switch at any depth.
+pub fn contains_switch(block: &Block) -> bool {
+    block
+        .iter()
+        .any(|op| matches!(op, Op::Switch { .. }) || op.arms().into_iter().any(contains_switch))
+}

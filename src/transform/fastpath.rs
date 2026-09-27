@@ -253,6 +253,8 @@ impl Builder<'_> {
 
 /// Builds the fast path of `prog` for budget `t`, with at most `limit`
 /// case blocks. The records give the reference and the exit probability.
+/// `prog` must hold no Switch: a Switch default taken in the result is
+/// counted as an exit.
 pub fn fast_path(
     prog: &Program,
     recs: &[Record],
@@ -260,6 +262,10 @@ pub fn fast_path(
     t: usize,
     limit: usize,
 ) -> FastPath {
+    assert!(
+        !crate::stats::contains_switch(&prog.body),
+        "fast_path input must hold no Switch"
+    );
     let gs = groups(prog, noise);
     let snaps: Vec<(f64, Vec<Vec<bool>>)> = recs
         .iter()

@@ -14,6 +14,8 @@
 - `src/check.rs`: equivalence check by simulation (distribution + state witnesses).
 - `src/transform/m0.rs`: M0 normal form. `src/transform/defer.rs`: defer rewrite.
 - `src/search.rs`: exhaustive and branch-and-bound search over defer choices.
+- `src/transform/fastpath.rs`: fast path over M_t. `src/transform/sink.rs`:
+  Pauli sink. `src/pauli.rs`: Pauli strings and Clifford conjugation.
 - `bench/`: Python (uv project). Qiskit bridge, dynamarq export, baseline runner.
 - `benchmarks/`: `hand/`, `jeff/` (vendored `.jeff` + golden `.qlin`), `dynamarq/`.
   `benchmarks/SOURCES.txt` records origins and commits.
@@ -22,7 +24,8 @@
 ## Build and test
 
 - `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
-- CI runs the same three commands.
+- Full-suite certifiers: `cargo test --release -- --ignored` (about 3 minutes).
+- CI job `fast` runs the first line. CI job `full` runs the certifiers.
 - Python: `cargo build --release`, then `uv run --project bench pytest bench`.
   The bench scripts call `target/release/qlin` (override with `QLIN_BIN`).
 

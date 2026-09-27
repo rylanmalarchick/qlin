@@ -1,11 +1,13 @@
-//! Replay latency under the ideal-controller model.
+//! Replay latency.
 //!
 //! For one executed trace, each op starts when its qubits are free. An op
-//! inside a classical If, or in a loop iteration after the first, also
-//! waits until each condition bit's measurement ends plus `t_ff`. The
-//! makespan is the finish time of the last op. This is the longest path in
-//! the trace's dependency graph, so it never grows when an edge is removed
-//! or a duration shrinks.
+//! inside a classical If or Switch, or in a loop iteration after the
+//! first, also waits until each condition bit's measurement ends plus
+//! `t_ff`. In the `Block` model, each executed branch is also one step of
+//! a serial controller (see `Replay::stall`). The makespan is the finish
+//! time of the last op. This is the longest path in a max-plus dependency
+//! graph, so it never grows when an edge or a branch is removed or a
+//! duration shrinks.
 //!
 //! Outcome records come from one exact simulation of the source program.
 //! Every semantically equal variant is scored on the same records.
@@ -15,7 +17,7 @@ use std::fmt;
 
 use serde::Serialize;
 
-use crate::cost::CostModel;
+use crate::cost::{CostModel, Sync};
 use crate::ir::{Bit, BitExpr, Block, Op, OpPath, Program, Qubit};
 use crate::sim::{basis_state, simulate, SimError, MAX_QUBITS};
 use crate::stats::noise_bits;
@@ -110,6 +112,8 @@ struct Replay<'a> {
     vals: Vec<bool>,
     meas_end: Vec<Option<f64>>,
     ready: Vec<f64>,
+    /// Block model: when the controller can decide the next branch.
+    controller_free: f64,
     /// Set when a loop hits `max_iters` without its exit. The run stops
     /// there, as in the simulator.
     stopped: bool,
@@ -122,6 +126,28 @@ impl Replay<'_> {
             .filter_map(|b| self.meas_end[b.0 as usize])
             .map(|t| t + self.cost.t_ff)
             .fold(0.0, f64::max)
+    }
+
+    /// Block model: the controller decides one branch at a time. A branch
+    /// starts when its condition (and any enclosing condition) is known
+    /// and the controller is free, and takes `t_branch`. Every qubit of
+    /// the branch waits for the decision, taken or not.
+    fn stall(&mut self, op: &Op, bits: &[Bit], gates: &[Bit]) {
+        if self.cost.sync != Sync::Block {
+            return;
+        }
+        let start = self
+            .gate_time(bits)
+            .max(self.gate_time(gates))
+            .max(self.controller_free);
+        let at = start + self.cost.t_branch;
+        self.controller_free = at;
+        for q in op.footprint().qubits {
+            if !self.noise.qubits.contains(&q) {
+                let r = &mut self.ready[q.0 as usize];
+                *r = r.max(at);
+            }
+        }
     }
 
     fn run_leaf(&mut self, qubits: &[Qubit], dur: f64, gates: &[Bit]) -> f64 {
@@ -210,7 +236,9 @@ impl Replay<'_> {
                 }
                 let mut inner = gates.to_vec();
                 if !self.relaxed.contains(path) {
-                    inner.extend(cond.bits());
+                    let bits: Vec<Bit> = cond.bits().into_iter().collect();
+                    self.stall(op, &bits, gates);
+                    inner.extend(bits);
                 }
                 if taken {
                     self.arm(then_, path, 0, &inner)?;
@@ -230,6 +258,10 @@ impl Replay<'_> {
                         inner.extend(until.bits());
                     }
                     self.arm(body, path, 0, &inner)?;
+                    if !self.stopped {
+                        let bits: Vec<Bit> = until.bits().into_iter().collect();
+                        self.stall(op, &bits, gates);
+                    }
                     let vals = &self.vals;
                     exited = self.stopped || until.eval(&|b: Bit| vals[b.0 as usize]);
                     if exited {
@@ -237,6 +269,24 @@ impl Replay<'_> {
                     }
                 }
                 self.stopped |= !exited;
+            }
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => {
+                let vals = &self.vals;
+                let (arm, block) =
+                    Op::switch_arm(bits, cases, default, &|b: Bit| vals[b.0 as usize]);
+                if bits.iter().all(|b| self.noise.bits.contains(b)) {
+                    return self.noise_arm(block);
+                }
+                let mut inner = gates.to_vec();
+                if !self.relaxed.contains(path) {
+                    self.stall(op, bits, gates);
+                    inner.extend(bits.iter().copied());
+                }
+                self.arm(block, path, arm, &inner)?;
             }
         }
         Ok(())
@@ -272,6 +322,7 @@ pub fn replay(
         vals: vec![false; prog.n_bits as usize],
         meas_end: vec![None; prog.n_bits as usize],
         ready: vec![0.0; prog.n_qubits as usize],
+        controller_free: 0.0,
         stopped: false,
     };
     r.block(&prog.body, &mut Vec::new(), &[])?;

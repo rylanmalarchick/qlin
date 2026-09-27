@@ -325,6 +325,43 @@ impl Parser {
                     ops.extend(body.iter().cloned());
                 }
             }
+            "switch" => {
+                let mut bits = vec![self.bit()?];
+                while matches!(self.peek(), Tok::Ident(s) if indexed(s, 'c').is_some()) {
+                    bits.push(self.bit()?);
+                }
+                self.expect(Tok::LBrace, "`{`")?;
+                let (mut cases, mut default) = (Vec::new(), Vec::new());
+                while *self.peek() != Tok::RBrace {
+                    let (t, word) = self.ident("`case` or `default`")?;
+                    match word.as_str() {
+                        "case" => {
+                            let mut v = Vec::with_capacity(bits.len());
+                            for _ in 0..bits.len() {
+                                v.push(match self.uint("a case bit 0 or 1")? {
+                                    0 => false,
+                                    1 => true,
+                                    _ => return Err(self.err_at(&t, "case bits are 0 or 1")),
+                                });
+                            }
+                            cases.push((v, self.braced()?));
+                        }
+                        "default" => default = self.braced()?,
+                        other => {
+                            return Err(self.err_at(
+                                &t,
+                                format!("expected `case` or `default`, found `{other}`"),
+                            ))
+                        }
+                    }
+                }
+                self.expect(Tok::RBrace, "`}`")?;
+                ops.push(Op::Switch {
+                    bits,
+                    cases,
+                    default,
+                });
+            }
             "loop" => {
                 self.keyword("max")?;
                 let max_iters = self.uint("an iteration bound")?;
@@ -544,12 +581,11 @@ fn collect_customs(block: &Block, out: &mut BTreeMap<String, Gate>) {
             } => {
                 out.insert(name.clone(), g.clone());
             }
-            Op::If { then_, else_, .. } => {
-                collect_customs(then_, out);
-                collect_customs(else_, out);
+            other => {
+                for arm in other.arms() {
+                    collect_customs(arm, out);
+                }
             }
-            Op::Loop { body, .. } => collect_customs(body, out),
-            _ => {}
         }
     }
 }
@@ -581,7 +617,7 @@ pub fn format_leaf(op: &Op) -> Option<String> {
         }
         Op::Measure { q, b } => Some(format!("measure q{} -> c{}", q.0, b.0)),
         Op::Reset { q } => Some(format!("reset q{}", q.0)),
-        Op::If { .. } | Op::Loop { .. } => None,
+        Op::If { .. } | Op::Loop { .. } | Op::Switch { .. } => None,
     }
 }
 
@@ -611,6 +647,26 @@ fn write_op(out: &mut String, op: &Op, depth: usize) {
             let _ = writeln!(out, "{pad}loop max {max_iters} {{");
             write_block(out, body, depth + 1);
             let _ = writeln!(out, "{pad}}} until {}", format_bexpr(until));
+        }
+        Op::Switch {
+            bits,
+            cases,
+            default,
+        } => {
+            let names: Vec<String> = bits.iter().map(|b| format!("c{}", b.0)).collect();
+            let _ = writeln!(out, "{pad}switch {} {{", names.join(" "));
+            for (v, block) in cases {
+                let vs: Vec<&str> = v.iter().map(|&x| if x { "1" } else { "0" }).collect();
+                let _ = writeln!(out, "{pad}  case {} {{", vs.join(" "));
+                write_block(out, block, depth + 2);
+                let _ = writeln!(out, "{pad}  }}");
+            }
+            if !default.is_empty() {
+                let _ = writeln!(out, "{pad}  default {{");
+                write_block(out, default, depth + 2);
+                let _ = writeln!(out, "{pad}  }}");
+            }
+            let _ = writeln!(out, "{pad}}}");
         }
         _ => unreachable!("leaf ops are handled by format_leaf"),
     }

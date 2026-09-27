@@ -41,12 +41,11 @@ fn count_gates(block: &Block, all: &mut usize, two: &mut usize) {
                     *two += 1;
                 }
             }
-            Op::If { then_, else_, .. } => {
-                count_gates(then_, all, two);
-                count_gates(else_, all, two);
+            other => {
+                for arm in other.arms() {
+                    count_gates(arm, all, two);
+                }
             }
-            Op::Loop { body, .. } => count_gates(body, all, two),
-            Op::Measure { .. } | Op::Reset { .. } => {}
         }
     }
 }
@@ -84,9 +83,6 @@ pub fn stats(prog: &Program) -> Stats {
     }
 }
 
-/// Like [`stats`], but first removes error-injection ops: every leaf op on
-/// a noise qubit, and every If whose condition reads only bits measured
-/// from a noise qubit. Noise qubits do not count toward `qubits`.
 /// Bits written by a measurement of a noise qubit.
 pub fn noise_bits(prog: &Program, noise: &BTreeSet<Qubit>) -> BTreeSet<Bit> {
     let mut out = BTreeSet::new();
@@ -94,6 +90,9 @@ pub fn noise_bits(prog: &Program, noise: &BTreeSet<Qubit>) -> BTreeSet<Bit> {
     out
 }
 
+/// Like [`stats`], but first removes error-injection ops: every leaf op on
+/// a noise qubit, and every If whose condition reads only bits measured
+/// from a noise qubit. Noise qubits do not count toward `qubits`.
 pub fn stats_with_noise(prog: &Program, noise: &BTreeSet<Qubit>) -> Stats {
     let noise_bits = noise_bits(prog, noise);
     let stripped = Program {
@@ -113,12 +112,11 @@ fn collect_noise_bits(block: &Block, noise: &BTreeSet<Qubit>, out: &mut BTreeSet
             Op::Measure { q, b } if noise.contains(q) => {
                 out.insert(*b);
             }
-            Op::If { then_, else_, .. } => {
-                collect_noise_bits(then_, noise, out);
-                collect_noise_bits(else_, noise, out);
+            other => {
+                for arm in other.arms() {
+                    collect_noise_bits(arm, noise, out);
+                }
             }
-            Op::Loop { body, .. } => collect_noise_bits(body, noise, out),
-            _ => {}
         }
     }
 }
@@ -145,8 +143,27 @@ fn strip(block: &Block, noise: &BTreeSet<Qubit>, noise_bits: &BTreeSet<Bit>) -> 
                 until: until.clone(),
                 max_iters: *max_iters,
             }),
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => out.push(Op::Switch {
+                bits: bits.clone(),
+                cases: cases
+                    .iter()
+                    .map(|(v, b)| (v.clone(), strip(b, noise, noise_bits)))
+                    .collect(),
+                default: strip(default, noise, noise_bits),
+            }),
             other => out.push(other.clone()),
         }
     }
     out
+}
+
+/// True when `block` holds a Switch at any depth.
+pub fn contains_switch(block: &Block) -> bool {
+    block
+        .iter()
+        .any(|op| matches!(op, Op::Switch { .. }) || op.arms().into_iter().any(contains_switch))
 }

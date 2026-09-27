@@ -86,3 +86,58 @@ fn noise_ops_take_no_time() {
     assert_eq!(ec.worst, 1464.0);
     assert_eq!(en.worst, 1464.0);
 }
+
+fn block(t_branch: f64) -> CostModel {
+    CostModel {
+        t_branch,
+        sync: qlin::cost::Sync::Block,
+        ..CostModel::HERON_LIKE
+    }
+}
+
+#[test]
+fn block_sync_stalls_on_untaken_branches() {
+    // t_branch = 0. If c1 stalls q2 until 968 + 600 = 1568, taken or not.
+    // If c0 stalls q2 until 1000 + 600 = 1600. z runs 1600-1632.
+    let p = load("benchmarks/hand/teleportation.qlin");
+    let recs = records(&p, LIMIT).unwrap();
+    for r in &recs {
+        let c0 = r.outcomes[&Bit(0)][0];
+        let want = if c0 { 1632.0 } else { 1600.0 };
+        let got = replay(&p, r, &block(0.0), &Noise::none(), &BTreeSet::new()).unwrap();
+        assert_eq!(got, want);
+    }
+}
+
+#[test]
+fn block_sync_controller_is_serial() {
+    // t_branch = 200. If c1 decides at 1568 + 200 = 1768. If c0 waits for
+    // the controller: max(1600, 1768) + 200 = 1968. z runs 1968-2000.
+    let p = load("benchmarks/hand/teleportation.qlin");
+    let recs = records(&p, LIMIT).unwrap();
+    let e = expected(&p, &recs, &block(200.0), &Noise::none(), &BTreeSet::new()).unwrap();
+    assert!((e.mean - 1984.0).abs() < 1e-9, "{}", e.mean);
+    assert_eq!(e.worst, 2000.0);
+}
+
+#[test]
+fn one_switch_beats_a_chain_of_ifs_when_branches_cost_time() {
+    // Same lookup decoder: 3 serial branches vs 1.
+    let ifs = load("benchmarks/hand/repetition3.qlin");
+    let sw = parse(
+        "qubits 5\nbits 2\nx q0\ncx q0 q1\ncx q1 q2\ncx q0 q3\ncx q1 q3\ncx q1 q4\ncx q2 q4\n\
+         measure q3 -> c0\nmeasure q4 -> c1\n\
+         switch c0 c1 { case 1 0 { x q0 } case 1 1 { x q1 } case 0 1 { x q2 } }\n",
+    )
+    .unwrap();
+    let recs = records(&ifs, LIMIT).unwrap();
+    let none = BTreeSet::new();
+    let e = |p, c| expected(p, &recs, &c, &Noise::none(), &none).unwrap().mean;
+    // Encoder and syndrome CNOTs end at 372. measure q3 runs 236-1036,
+    // measure q4 runs 372-1172, so both bits are ready at 1772. The Ifs
+    // decide at 1972, 2172, 2372. The switch decides at 1972. The input
+    // has no error, so no correction runs.
+    assert_eq!(e(&ifs, block(200.0)), 2372.0);
+    assert_eq!(e(&sw, block(200.0)), 1972.0);
+    assert_eq!(e(&ifs, block(0.0)), e(&sw, block(0.0)));
+}

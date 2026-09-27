@@ -204,6 +204,41 @@ pub enum Op {
         until: BitExpr,
         max_iters: u32,
     },
+    /// One runtime branch on several bits: runs the case whose values equal
+    /// `bits`, else `default`.
+    Switch {
+        bits: Vec<Bit>,
+        cases: Vec<(Vec<bool>, Block)>,
+        default: Block,
+    },
+}
+
+impl Op {
+    /// Child blocks in arm order (see [`OpPath`]). Empty for leaf ops.
+    pub fn arms(&self) -> Vec<&Block> {
+        match self {
+            Op::If { then_, else_, .. } => vec![then_, else_],
+            Op::Loop { body, .. } => vec![body],
+            Op::Switch { cases, default, .. } => {
+                cases.iter().map(|c| &c.1).chain([default]).collect()
+            }
+            Op::Gate { .. } | Op::Measure { .. } | Op::Reset { .. } => vec![],
+        }
+    }
+
+    /// For a Switch: the arm index and block that run for the bit values.
+    pub fn switch_arm<'a>(
+        bits: &[Bit],
+        cases: &'a [(Vec<bool>, Block)],
+        default: &'a Block,
+        value: &impl Fn(Bit) -> bool,
+    ) -> (usize, &'a Block) {
+        let got: Vec<bool> = bits.iter().map(|b| value(*b)).collect();
+        match cases.iter().position(|(v, _)| *v == got) {
+            Some(i) => (i, &cases[i].1),
+            None => (cases.len(), default),
+        }
+    }
 }
 
 /// A gate serializes as its text name.
@@ -261,6 +296,16 @@ impl Op {
                     op.add_footprint(fp);
                 }
             }
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => {
+                fp.reads.extend(bits.iter().copied());
+                for op in cases.iter().flat_map(|c| &c.1).chain(default) {
+                    op.add_footprint(fp);
+                }
+            }
         }
     }
 
@@ -300,6 +345,7 @@ pub enum ValidateError {
         q: Qubit,
     },
     ZeroMaxIters,
+    BadSwitch(String),
     NonFiniteParam {
         gate: String,
     },
@@ -324,6 +370,7 @@ impl fmt::Display for ValidateError {
                 write!(f, "gate {gate} uses qubit q{} twice", q.0)
             }
             ValidateError::ZeroMaxIters => write!(f, "loop max must be at least 1"),
+            ValidateError::BadSwitch(why) => write!(f, "bad switch: {why}"),
             ValidateError::NonFiniteParam { gate } => {
                 write!(f, "gate {gate} has a parameter that is not finite")
             }
@@ -423,6 +470,32 @@ impl Program {
                 self.check_bits(until)?;
                 self.validate_block(body)
             }
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => {
+                let bad = |why: &str| Err(ValidateError::BadSwitch(why.into()));
+                if bits.is_empty() {
+                    return bad("no bits");
+                }
+                if bits.iter().collect::<BTreeSet<_>>().len() != bits.len() {
+                    return bad("repeated bit");
+                }
+                if let Some(b) = bits.iter().find(|b| b.0 >= self.n_bits) {
+                    return Err(ValidateError::BitOutOfRange(*b));
+                }
+                if cases.iter().any(|(v, _)| v.len() != bits.len()) {
+                    return bad("case width differs from the bit count");
+                }
+                if cases.iter().map(|c| &c.0).collect::<BTreeSet<_>>().len() != cases.len() {
+                    return bad("repeated case");
+                }
+                for (_, block) in cases {
+                    self.validate_block(block)?;
+                }
+                self.validate_block(default)
+            }
         }
     }
 }
@@ -430,7 +503,8 @@ impl Program {
 /// Position of an op in the program tree. The path alternates block index
 /// and arm: `[i]` is op `i` of the body. `[i, 0, j]` is op `j` of the
 /// `then` arm (or the loop body) of op `i`. `[i, 1, j]` is op `j` of its
-/// `else` arm.
+/// `else` arm. For a Switch, arm `k` is case `k` and arm `cases.len()` is
+/// the default.
 pub type OpPath = Vec<usize>;
 
 impl Program {
@@ -446,6 +520,11 @@ impl Program {
                 (Op::If { then_, .. }, 0) => then_,
                 (Op::If { else_, .. }, 1) => else_,
                 (Op::Loop { body, .. }, 0) => body,
+                (Op::Switch { cases, default, .. }, k) => match cases.get(*k) {
+                    Some(c) => &c.1,
+                    None if *k == cases.len() => default,
+                    None => return None,
+                },
                 _ => return None,
             };
             op = block.get(*idx)?;

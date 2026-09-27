@@ -116,6 +116,7 @@ fn checker_rejects_a_defer_with_the_wrong_control() {
 }
 
 #[test]
+#[ignore = "full suite: run by CI job full"]
 fn every_defer_is_sound_on_every_small_benchmark() {
     let (mut checked, mut too_big) = (0, Vec::new());
     let mut with_candidates = 0;

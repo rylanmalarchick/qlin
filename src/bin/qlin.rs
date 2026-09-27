@@ -40,6 +40,7 @@ usage:
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
 MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS] [--tmeas NS]
+       [--t1q NS] [--t2q NS] [--treset NS] (t_3q follows as 6 x t_2q)
        (default preset heron_like; see notes/cost-sources.txt)";
 
 /// Branch limit for `qlin sim`.
@@ -63,6 +64,8 @@ struct Flags {
     size: Option<usize>,
     kingston: bool,
     tmeas: Option<f64>,
+    /// Overrides for t_1q, t_2q, t_reset.
+    gates: [Option<f64>; 3],
     /// Grid for `sweep`: t_meas, t_ff, t_branch values.
     grid: [Vec<f64>; 3],
 }
@@ -82,6 +85,17 @@ impl Flags {
         }
         if let Some(t) = self.tmeas {
             c.t_meas = t;
+        }
+        if let Some(t) = self.gates[0] {
+            c.t_1q = t;
+        }
+        if let Some(t) = self.gates[1] {
+            c.t_2q = t;
+            // ccx as 6 two-qubit gates, as in HERON_KINGSTON.
+            c.t_3q = 6.0 * t;
+        }
+        if let Some(t) = self.gates[2] {
+            c.t_reset = t;
         }
         if self.block {
             c.sync = Sync::Block;
@@ -128,10 +142,16 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                 };
                 f.grid[slot] = list;
             }
-            Some(flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t" | "--size" | "--model")) => {
+            Some(
+                flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t1q" | "--t2q" | "--treset" | "--t"
+                | "--size" | "--model"),
+            ) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
                 match flag {
+                    "--t1q" => f.gates[0] = Some(v.parse().map_err(|_| bad())?),
+                    "--t2q" => f.gates[1] = Some(v.parse().map_err(|_| bad())?),
+                    "--treset" => f.gates[2] = Some(v.parse().map_err(|_| bad())?),
                     "--tmeas" => f.tmeas = Some(v.parse().map_err(|_| bad())?),
                     "--tff" => f.tff = Some(v.parse().map_err(|_| bad())?),
                     "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),

@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
+use qlin::check::{equivalent, inputs};
 use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
@@ -28,7 +29,7 @@ usage:
   qlin opt [MODEL] [--noise-qubits I,J] [--check] [--json] FILE.qlin
                                           choose which Ifs to defer. Prints
                                           the best program, or a JSON report
-  qlin fastpath [--t T] [--size S] [--sink] [MODEL] [--noise-qubits I,J] [--json] FILE.qlin
+  qlin fastpath [--t T] [--size S] [--sink] [--check] [MODEL] [--noise-qubits I,J] [--json] FILE.qlin
                                           fast path over the outcome budget t
                                           (default 1), at most S cases (4096)
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
@@ -199,6 +200,13 @@ fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
         f.t.unwrap_or(1),
         f.size.unwrap_or(4096),
     );
+    let checked = if f.check && prog.n_qubits <= qlin::sim::MAX_QUBITS {
+        equivalent(prog, &fp.prog, &inputs(prog.n_qubits, 8, 31), SIM_LIMIT)
+            .map_err(|e| format!("fast path failed the equivalence check: {e}"))?;
+        true
+    } else {
+        false
+    };
     if !f.json {
         return Ok(print(&fp.prog));
     }
@@ -213,6 +221,7 @@ fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
         "base": score(&base)?,
         "fast": score(&fp.prog)?,
         "sink_moved": moved,
+        "checked": checked,
         "fastpath": fp,
         "program": print(&fp.prog),
     });

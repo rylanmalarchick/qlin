@@ -24,8 +24,10 @@
 ## Build and test
 
 - `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
-- Full-suite certifiers: `cargo test --release -- --ignored` (about 3 minutes).
-- CI job `fast` runs the first line. CI job `full` runs the certifiers.
+- Full-suite certifiers: `cargo test --release -- --ignored` (about 8 minutes).
+- CI job `fast` runs the first line. CI job `full` runs the certifiers, one
+  shard per test file (`defer`, `fastpath`, `m0`, `search`, `sink`). A new
+  ignored test in another file needs a new shard.
 - Python: `cargo build --release`, then `uv run --project bench pytest bench`.
   The bench scripts call `target/release/qlin` (override with `QLIN_BIN`).
 

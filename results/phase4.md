@@ -27,7 +27,7 @@ replace the planned cross-check:
   every shot). One lowering rule was learned from the misses: a
   non-destructive measure with outcome 1 costs one extra rxy. The residual
   misses come from Selene's compile-time gate cancellation (a probe shows
-  `x; x` compiles to no op). In the recorded misses, qlin predicts 64 or
+  `x q0` twice compiles to no op). In the recorded misses, qlin predicts 64 or
   128 ns more than Selene, at most 0.17% of the shot.
 - Distribution check (emulated, bench/test_guppy.py): every benchmark with
   at most 12 qubits gives the same output distribution on Selene as `qlin

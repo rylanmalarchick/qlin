@@ -33,7 +33,11 @@ qlin opt [MODEL] [--noise-qubits I] [--check] [--json] FILE.qlin
 qlin fastpath [--t T] [--size S] [--sink] [--check] [MODEL] [--json] FILE.qlin
                                         # fast path over the outcome budget t
 qlin lat [MODEL] FILE.qlin              # expected latency
-# MODEL: [--model ideal|block] [--tff NS] [--tbranch NS]
+qlin sweep [--tmeas-list ..] [--tff-list ..] [--tbranch-list ..] FILE.qlin
+                                        # variants scored over a cost grid
+qlin traces FILE.qlin                   # every per-outcome trace
+# MODEL: [--preset heron_like|heron_kingston] [--model ideal|block]
+#        [--tff NS] [--tbranch NS] [--tmeas NS] [--t1q NS] [--t2q NS] [--treset NS]
 ```
 
 `qlin fastpath` dispatches each run of Ifs on the same measured bits
@@ -65,6 +69,11 @@ uv run --project bench python bench/run_baselines.py
 and writes `results/phase2.csv` and `results/phase2.md`.
 `bench/run_phase3.py` runs the fast-path sweep under the block model and
 writes `results/phase3.csv` and `results/phase3.md`.
+Phase 4: `bench/run_phase4_sensitivity.py` (cost-grid sensitivity),
+`bench/run_phase4_selene.py` (Selene accounting check),
+`bench/run_phase4_ibm.py [--dry-run]` (IBM run, needs a working IBM account).
+`bench/qlin_guppy.py` writes a Guppy program for Selene. The cost-model
+sources are in `notes/cost-sources.txt`.
 
 ## The `.qlin` text format
 

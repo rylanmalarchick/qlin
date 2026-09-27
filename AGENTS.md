@@ -44,4 +44,9 @@
   including defer copy qubits. Larger cases are reported as skipped or unchecked.
 - Some tests pin exact counts (benchmarks certified, variants checked). A new
   benchmark changes them. Update the pinned number and its comment together.
+- Selene streams results over a local socket: consume each shot's results
+  while `run_shots` runs (see `bench/selene_run.py`).
+- IBM backends have no switch_case: use `to_qiskit(..., switch_as_if=True)`.
+- Every value in a cost preset needs a tagged line in `notes/cost-sources.txt`
+  (a unit test checks HERON_KINGSTON).
 - bqcp has no license. Call it from a clone. Do not copy its code into this repo.

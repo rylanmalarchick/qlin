@@ -26,14 +26,14 @@ a lower bound on what must stay runtime-decided.
 
 1. CURRENT FOCUS (the handoff. Update it when it changes.)
 ==========================================================
-  STATE 2026-09-26. Phases 0 to 2 merged. Phase 3 built on branch
-  phase3. G3: items 1 and 2 PASS. Pitch decision (item 3): "method +
-  bound + soundness". At t_branch = 0 no benchmark gains 10% (best
-  9.5%). With a branch overhead (t_branch 200 to 1000 ns) the fast path
-  gains 16% to 78% on the five-qubit and repetition5 codes.
-  Next: merge the phase3 PR, then Phase 4 (device cost model).
-  Open for Rylan: contact Yuan with the G3 table (item 4). Report the
-  bqcp bug (notes/bqcp-bug.txt).
+  STATE 2026-09-27. Phases 0 to 3 merged. Phase 4 built on branch
+  phase4. G4 passes on an honest report (results/phase4.md): sourced
+  Kingston preset, Selene accounting and distribution checks, and a
+  sensitivity analysis. No device measurement: the IBM account is
+  blocked. bench/run_phase4_ibm.py is ready and dry-run tested.
+  Next: merge the phase4 PR. Then Phase 6 (write-up), or Phase 5
+  (Lean, stretch), or the IBM run once the account works.
+  Open for Rylan: IBM account, contact Yuan, report the bqcp bug.
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -330,18 +330,24 @@ Phase 3. Fast path, exit edges, fallback.                    ~4 weeks
   runtime check), a joint defer + fast-path search, Switch in the
   Qiskit bridge.
 
-Phase 4. Device cost model and falsification.                ~2 weeks
-  4.1  Parameters: measure time and error, feedforward latency, native
-       gate times, reset time, controller code-size limit, result-read
-       count (Helios sync points). Starting values in
-       notes/prior-work.txt, section 8.
-  4.2  Predict shot time per benchmark variant. Run the variants on
-       Helios-1E or Selene. Label numbers "emulated".
-  4.3  Stretch X2: the same on IBM Heron, free open plan only.
-  G4   Report rank correlation and the worst miss. If the model ranks
-       two variants in the wrong order on a device, the write-up says
-       the model is wrong for that device. The gate passes on an honest
-       report, not on a good correlation.
+Phase 4. Device cost model and falsification.                ~2.5 weeks
+  (Restated 2026-09-27 by Rylan. The IBM account is blocked, and
+  Selene's runtime is serial with no feedforward cost, so it cannot
+  test scheduling.)
+  4.0  CI full job sharded by test file.
+  4.1  HERON_KINGSTON preset, every value tagged with its source
+       (notes/cost-sources.txt). No Helios preset (see there).
+  4.2  Selene spike: timing semantics (notes/selene-timing.txt).
+  4.3  qlin to Guppy codegen, checked against qlin sim on Selene.
+  4.4  Selene accounting check: per-shot time against qlin's trace.
+  4.5  Sensitivity: conclusions over the sourced parameter ranges.
+  4.6  Qiskit bridge: Switch as switch_case, or as an if/else chain.
+  4.7  IBM runner, gated on the account (dry run offline).
+  G4   1. Every preset value tagged. 2. Accounting check and
+       sensitivity analysis reported, misses listed. 3. IBM measured, or
+       the stated reason it was not run. 4. Passes on an honest report.
+       RESULT: PASS on the report. No device measurement (IBM blocked).
+       (results/phase4.md)
 
 Phase 5 (stretch X1). Lean model of S1 to S3.                ~2 weeks
   Classical-bit semantics only. Gates are opaque symbols. Prove that
@@ -425,7 +431,8 @@ empirical, heuristic.
   C5  Expected-latency gain on benchmarks.   modeled, HERON_LIKE (an
       assumed cost model, not measured). See the LOG.
   C6  Cost model ranks variants correctly on device X.
-                                                   empirical, not run
+                        empirical, NOT RUN: IBM account blocked. Offline
+                        dry run only.
   C7  Defer preserves the output distribution and state (S3 for defer).
       empirical (simulation check, finite inputs and witnesses: sound,
       not complete)
@@ -438,6 +445,13 @@ empirical, heuristic.
   C10 The fast path and the Pauli sink preserve the output distribution
       and state.   empirical (simulation check, 282 sweep variants and
                    the full-suite tests: sound, not complete)
+  C12 qlin's per-outcome op accounting matches Selene's serial time.
+                        emulated: 39988 of 44000 shots exact over 220
+                        variants, residual from Selene's compile-time
+                        gate cancellation (<= 0.17% of a shot)
+  C13 "Defer beats classical" is robust over the sourced ranges (t_meas
+      1760-4000, t_ff 224-700 ns).   modeled: holds at every grid point
+                        on 9 benchmarks, at none on 17
   C11 Pauli conjugation table (h s sdg sx x y z cx cy cz swap).
                    machine-checked against the simulator, 96 cases
   C9  The relaxation (undecided Ifs without feedforward wait) is a lower
@@ -465,6 +479,14 @@ empirical, heuristic.
   2026-09-25  G1 restated: gate on ff > 0 after bqcp on a noise-aware
               reference, not on movable ops. Noise is a random X per data
               qubit from one noise-source qubit. Noise ops do not count.
+  2026-09-27  Phase 4: G4 is structural + sourced (Rylan). IBM last,
+              skipped with a reason if the account is still blocked.
+  2026-09-27  CI full job sharded by test file (Rylan).
+  2026-09-27  Selene cross-check replaced by a sensitivity analysis plus
+              a serial accounting check (Rylan: both).
+  2026-09-27  No Helios preset: the per-op model cannot represent a
+              transport-dominated device, and most values would be
+              assumed. The plan had HELIOS_SOURCED.
   2026-09-26  Phase 3 gain sources: branch overhead, then Pauli sink
               (Rylan). Block model uses a serial controller (see Phase 3).
   2026-09-26  CI split into fast and full jobs (Rylan).
@@ -527,6 +549,26 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-27  Phase 4 built (branch phase4). G4 PASS on the report. No
+              device data. results/phase4.md.
+              Findings:
+              1. Kingston snapshot (2026-04-15): cz 68, sx 32, measure
+                 2280, measure_2 1760, reset 2312 ns. The final measure
+                 agrees with dynamarq's 34x. The mid-circuit measure does
+                 not (1760 vs 798 ns from "65% shorter").
+              2. Selene SimpleRuntime is serial, has no feedforward cost,
+                 lowers project_z as measure + reset + rxy(outcome 1),
+                 and cancels adjacent gates at compile time.
+              3. Accounting check: 39988 / 44000 shots exact. One rule
+                 learned from misses (outcome-1 rxy). A second guessed
+                 rule (reset drops it) was wrong: a probe disproved it,
+                 and it was removed.
+              4. Sensitivity: defer is robust. The fast-path gain depends
+                 only on the unsourced t_branch. The Phase 3 five-qubit
+                 gain at t_branch 200 does not survive Kingston values.
+              5. IBM has no switch_case. A Switch runs as an if/else
+                 chain, which removes the fast path's single dispatch on
+                 IBM hardware.
   2026-09-26  Phase 3 built (branch phase3). G3 items 1, 2 PASS. Pitch:
               "method + bound + soundness". Numbers are modeled (block
               sync, HERON_LIKE assumed, t_ff 600). results/phase3.md.

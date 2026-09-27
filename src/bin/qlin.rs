@@ -34,7 +34,10 @@ usage:
                                           (default 1), at most S cases (4096)
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
-MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS]
+  qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
+             [--noise-qubits I,J] FILE.qlin
+                                          score fixed variants over a cost grid
+MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS] [--tmeas NS]
        (default preset heron_like; see notes/cost-sources.txt)";
 
 /// Branch limit for `qlin sim`.
@@ -57,6 +60,9 @@ struct Flags {
     t: Option<usize>,
     size: Option<usize>,
     kingston: bool,
+    tmeas: Option<f64>,
+    /// Grid for `sweep`: t_meas, t_ff, t_branch values.
+    grid: [Vec<f64>; 3],
 }
 
 impl Flags {
@@ -71,6 +77,9 @@ impl Flags {
         }
         if let Some(t) = self.tbranch {
             c.t_branch = t;
+        }
+        if let Some(t) = self.tmeas {
+            c.t_meas = t;
         }
         if self.block {
             c.sync = Sync::Block;
@@ -104,10 +113,24 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                     other => return Err(format!("bad --preset `{other:?}`")),
                 }
             }
-            Some(flag @ ("--tff" | "--tbranch" | "--t" | "--size" | "--model")) => {
+            Some(flag @ ("--tmeas-list" | "--tff-list" | "--tbranch-list")) => {
+                let v = it.next().ok_or(USAGE)?;
+                let list: Vec<f64> = v
+                    .split(',')
+                    .map(|x| x.parse().map_err(|_| format!("bad {flag} `{v}`")))
+                    .collect::<Result<_, _>>()?;
+                let slot = match flag {
+                    "--tmeas-list" => 0,
+                    "--tff-list" => 1,
+                    _ => 2,
+                };
+                f.grid[slot] = list;
+            }
+            Some(flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t" | "--size" | "--model")) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
                 match flag {
+                    "--tmeas" => f.tmeas = Some(v.parse().map_err(|_| bad())?),
                     "--tff" => f.tff = Some(v.parse().map_err(|_| bad())?),
                     "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),
                     "--t" => f.t = Some(v.parse().map_err(|_| bad())?),
@@ -179,6 +202,77 @@ fn opt(prog: &Program, f: &Flags) -> Result<String, String> {
         "program": print(&best),
     });
     Ok(report.to_string())
+}
+
+/// Scores fixed variants of `prog` at every point of the grid
+/// (t_meas x t_ff x t_branch, each under the Ideal and Block models). The
+/// variants: source, M0, best defer (searched at each point), and fast
+/// path with and without sink for t = 0..min(m, 6).
+fn sweep(prog: &Program, f: &Flags) -> Result<String, String> {
+    let normal = normal_form(prog);
+    let noise = Noise::new(&normal, &f.noise);
+    let base = f.cost()?;
+    let mut problem =
+        Problem::new(&normal, base, noise.clone(), SIM_LIMIT).map_err(|e| e.to_string())?;
+    let recs = problem.recs.clone();
+    let sunk = sink(&normal, &noise).prog;
+    let m = fast_path(&normal, &recs, &noise, 0, 4096).group_bits;
+    let mut variants: Vec<(String, Program)> = vec![
+        ("source".into(), prog.clone()),
+        ("m0".into(), normal.clone()),
+        ("sink_only".into(), sunk.clone()),
+    ];
+    for t in 0..=m.min(6) {
+        variants.push((
+            format!("fast_t{t}"),
+            fast_path(&normal, &recs, &noise, t, 4096).prog,
+        ));
+        variants.push((
+            format!("sink_fast_t{t}"),
+            fast_path(&sunk, &recs, &noise, t, 4096).prog,
+        ));
+    }
+    let pick = |grid: &Vec<f64>, default: f64| {
+        if grid.is_empty() {
+            vec![default]
+        } else {
+            grid.clone()
+        }
+    };
+    let none = BTreeSet::new();
+    let mut points = Vec::new();
+    for tmeas in pick(&f.grid[0], base.t_meas) {
+        for tff in pick(&f.grid[1], base.t_ff) {
+            for tbranch in pick(&f.grid[2], base.t_branch) {
+                for sync in [Sync::Ideal, Sync::Block] {
+                    let cost = CostModel {
+                        t_meas: tmeas,
+                        t_ff: tff,
+                        t_branch: tbranch,
+                        sync,
+                        ..base
+                    };
+                    cost.validate().map_err(|e| e.to_string())?;
+                    let mut scores = serde_json::Map::new();
+                    for (name, v) in &variants {
+                        let e = expected(v, &recs, &cost, &Noise::new(v, &f.noise), &none)
+                            .map_err(|e| e.to_string())?;
+                        scores.insert(name.clone(), e.mean.into());
+                    }
+                    problem.cost = cost;
+                    let bnb = problem.branch_and_bound().map_err(|e| e.to_string())?;
+                    scores.insert("best_defer".into(), bnb.best.mean.into());
+                    points.push(serde_json::json!({
+                        "t_meas": tmeas, "t_ff": tff, "t_branch": tbranch,
+                        "sync": cost.sync, "scores": scores,
+                    }));
+                }
+            }
+        }
+    }
+    let out =
+        serde_json::json!({ "group_bits": m, "candidates": problem.cands.len(), "points": points });
+    Ok(out.to_string())
 }
 
 /// Expected latency of `prog` on its own outcome records.
@@ -275,6 +369,10 @@ fn run(args: &[String]) -> Result<String, String> {
         "fastpath" => {
             let (file, f) = flags(rest)?;
             fastpath(&load(file)?, &f)
+        }
+        "sweep" => {
+            let (file, f) = flags(rest)?;
+            sweep(&load(file)?, &f)
         }
         "lat" => {
             let (file, f) = flags(rest)?;

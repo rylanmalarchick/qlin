@@ -15,7 +15,18 @@ Findings (from the instruction log):
      .read() blocks until the result exists.
   4. Native lowering: cx is rxy, rzz, rz, rxy, rz (plus rxy on the other
      qubit). h is rxy, rz. Each qubit allocation is a reset (2312 ns).
-  5. The clock runs on across shots. A shot's time is the difference
+  5. A non-destructive measure (project_z) costs one extra rxy (32 ns
+     here) when the outcome is 1. Found by the accounting check: every
+     first-run miss was 32 ns times the number of 1 outcomes. Selene
+     appears to measure destructively and re-prepare |1>.
+  6. Selene's compiler cancels adjacent gates at compile time: a probe
+     shows `x q0; x q0` compiles to no op at all. A shot's time is
+     therefore not always the sum of per-op times. A tested guess that
+     a reset after a measure drops the re-preparation was wrong: a probe
+     shows measure, reset, rxy, then the explicit reset, all charged.
+  7. The clock runs on across shots.
+  8. Lowering of project_z: MeasureRequest, then Reset, then rxy (only
+     for outcome 1). A shot's time is the difference
      between its first batch start and its last batch end.
 
 Consequence

@@ -48,3 +48,15 @@ def test_switch_round_trip(rel: str):
     assert "switch" in text
     circ = to_qiskit(json.loads(qlin_text(text, "json")))
     assert from_qiskit(circ) == qlin_text(text, "fmt")
+
+
+def test_switch_as_if_chain_keeps_semantics():
+    from qlin_qiskit import qlin_text, to_qiskit
+    from run_baselines import dist, same_distribution
+    import json
+    path = ROOT / "benchmarks/dynamarq/repetition3_0_noisy.qlin"
+    text = qlin("fastpath", "--t", "2", "--noise-qubits", "5", str(path))
+    chain = from_qiskit(to_qiskit(json.loads(qlin_text(text, "json")), switch_as_if=True))
+    assert "switch" not in chain and "if " in chain
+    ok, worst = same_distribution(dist(text), dist(chain))
+    assert ok, worst

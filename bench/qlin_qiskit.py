@@ -108,7 +108,8 @@ def _condition_for(qc: QuantumCircuit, e: dict, c: ClassicalRegister, negate: bo
     return expr.logic_not(cond) if negate else cond
 
 
-def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegister) -> None:
+def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegister,
+          switch_as_if: bool = False) -> None:
     for op in block:
         (kind, a), = op.items()
         if kind == "Gate":
@@ -121,10 +122,10 @@ def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegis
             qc.reset(q[a["q"]])
         elif kind == "If":
             with qc.if_test(_condition_for(qc, a["cond"], c)) as else_:
-                _emit(qc, a["then_"], q, c)
+                _emit(qc, a["then_"], q, c, switch_as_if)
             if a["else_"]:
                 with else_:
-                    _emit(qc, a["else_"], q, c)
+                    _emit(qc, a["else_"], q, c, switch_as_if)
         elif kind == "Switch":
             # A register over the switch bits; case value bit i is bits[i].
             bits = a["bits"]
@@ -133,29 +134,47 @@ def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegis
             if reg is None:
                 reg = ClassicalRegister(name=name, bits=[c[b] for b in bits])
                 qc.add_register(reg)
-            with qc.switch(reg) as case:
-                for values, body in a["cases"]:
-                    with case(sum(int(v) << i for i, v in enumerate(values))):
-                        _emit(qc, body, q, c)
-                if a["default"]:
-                    with case(case.DEFAULT):
-                        _emit(qc, a["default"], q, c)
+            if switch_as_if:
+                _if_chain(qc, reg, a["cases"], a["default"], q, c)
+            else:
+                with qc.switch(reg) as case:
+                    for values, body in a["cases"]:
+                        with case(sum(int(v) << i for i, v in enumerate(values))):
+                            _emit(qc, body, q, c)
+                    if a["default"]:
+                        with case(case.DEFAULT):
+                            _emit(qc, a["default"], q, c)
         elif kind == "Loop":
             # qlin runs the body, then exits when `until` holds. Qiskit's
             # while loop tests first, so the body is written once before it.
-            _emit(qc, a["body"], q, c)
+            _emit(qc, a["body"], q, c, switch_as_if)
             with qc.while_loop(_condition_for(qc, a["until"], c, negate=True)):
-                _emit(qc, a["body"], q, c)
+                _emit(qc, a["body"], q, c, switch_as_if)
         else:
             raise Unsupported(f"op {kind}")
 
 
-def to_qiskit(prog: dict) -> QuantumCircuit:
-    """Builds a Qiskit circuit from a `qlin json` tree."""
+def _if_chain(qc, reg, cases, default, q, c) -> None:
+    """A Switch as nested if/else on `reg == value`, for backends without
+    switch_case."""
+    if not cases:
+        _emit(qc, default, q, c, True)
+        return
+    (values, body), rest = cases[0], cases[1:]
+    with qc.if_test((reg, sum(int(v) << i for i, v in enumerate(values)))) as else_:
+        _emit(qc, body, q, c, True)
+    if rest or default:
+        with else_:
+            _if_chain(qc, reg, rest, default, q, c)
+
+
+def to_qiskit(prog: dict, switch_as_if: bool = False) -> QuantumCircuit:
+    """Builds a Qiskit circuit from a `qlin json` tree. With
+    `switch_as_if`, a Switch becomes a nested if/else chain."""
     q = QuantumRegister(prog["n_qubits"], "q")
     c = ClassicalRegister(max(prog["n_bits"], 1), "c")
     qc = QuantumCircuit(q, c)
-    _emit(qc, prog["body"], q, c)
+    _emit(qc, prog["body"], q, c, switch_as_if)
     return qc
 
 

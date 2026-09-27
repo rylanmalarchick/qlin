@@ -430,8 +430,11 @@ empirical, heuristic.
       empirical (simulation check, finite inputs and witnesses: sound,
       not complete)
   C8  Fast-path size stays within S for t <= 2 on the QEC benchmarks.
-                        empirical: every evaluated benchmark fits in
-                        S = 4096 up to t = 6 (results/phase3.csv)
+                        empirical: the QEC benchmarks fit S = 4096 for
+                        every t <= 6 (largest 3490: repetition5 with the
+                        sink at t = 4, where the sink splits one group
+                        into several). iqft_7 and iqpe_7 reach the limit
+                        at t >= 4, so some branches stay generic there.
   C10 The fast path and the Pauli sink preserve the output distribution
       and state.   empirical (simulation check, 282 sweep variants and
                    the full-suite tests: sound, not complete)

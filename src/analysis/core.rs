@@ -115,11 +115,10 @@ fn child(path: &[usize], arm: usize, idx: usize) -> OpPath {
 
 /// Paths of every leaf inside `op`, relative to `op`.
 fn leaf_rel_paths(op: &Op) -> Vec<OpPath> {
-    let arms: Vec<&Block> = match op {
-        Op::If { then_, else_, .. } => vec![then_, else_],
-        Op::Loop { body, .. } => vec![body],
-        _ => return vec![vec![]],
-    };
+    if op.is_leaf() {
+        return vec![vec![]];
+    }
+    let arms = op.arms();
     let mut out = Vec::new();
     for (arm, block) in arms.into_iter().enumerate() {
         for (i, inner) in block.iter().enumerate() {
@@ -286,6 +285,40 @@ impl Walker {
                     }
                 }
                 forget(known, &writes(&[then_, else_]));
+            }
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => {
+                let arms = op.arms();
+                let all_known = bits.iter().all(|b| known[b.0 as usize].is_some());
+                if all_known {
+                    let k = &*known;
+                    let (live, _) = Op::switch_arm(bits, cases, default, &|b: Bit| {
+                        k[b.0 as usize].expect("checked known")
+                    });
+                    for (i, block) in arms.iter().enumerate() {
+                        if i == live {
+                            self.arm(block, path, i, known, mode);
+                        } else {
+                            self.dead(block, path, i);
+                        }
+                    }
+                } else {
+                    // Every case is core: a Switch is one runtime branch.
+                    self.report.feedforward += 1;
+                    let mut entry = known.clone();
+                    forget(&mut entry, &writes(&arms));
+                    let inner = match mode {
+                        Mode::Core(k) => Mode::Core(k),
+                        Mode::Static | Mode::Loop => Mode::Core(CoreKind::Branch),
+                    };
+                    for (i, block) in arms.iter().enumerate() {
+                        self.arm(block, path, i, &mut entry.clone(), inner);
+                    }
+                }
+                forget(known, &writes(&arms));
             }
             Op::Loop { body, until, .. } => {
                 let w = writes(&[body]);

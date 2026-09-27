@@ -91,6 +91,33 @@ fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
                 });
                 forget_op(known, op);
             }
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => {
+                if bits.iter().all(|b| known[b.0 as usize].is_some()) {
+                    let k = known.clone();
+                    let (_, live) = Op::switch_arm(bits, cases, default, &|b: crate::ir::Bit| {
+                        k[b.0 as usize].expect("checked known")
+                    });
+                    out.extend(block(live, known, None));
+                } else {
+                    let mut entry = known.clone();
+                    for b in writes(&op.arms()) {
+                        entry[b.0 as usize] = None;
+                    }
+                    out.push(Op::Switch {
+                        bits: bits.clone(),
+                        cases: cases
+                            .iter()
+                            .map(|(v, b)| (v.clone(), block(b, &mut entry.clone(), None)))
+                            .collect(),
+                        default: block(default, &mut entry.clone(), None),
+                    });
+                    forget_op(known, op);
+                }
+            }
             leaf => {
                 out.push(leaf.clone());
                 forget_op(known, leaf);

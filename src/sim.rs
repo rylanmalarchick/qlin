@@ -336,6 +336,15 @@ fn step<'a>(op: &'a Op, run: &mut Run<'a>, work: &mut Vec<Run<'a>>) -> Result<()
             };
             run.conts.push(Cont::Ops(arm));
         }
+        Op::Switch {
+            bits,
+            cases,
+            default,
+        } => {
+            let vals = &run.branch.bits;
+            let (_, arm) = Op::switch_arm(bits, cases, default, &|b: Bit| vals[b.0 as usize]);
+            run.conts.push(Cont::Ops(arm));
+        }
         Op::Loop {
             body,
             until,

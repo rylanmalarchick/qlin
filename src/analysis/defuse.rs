@@ -21,27 +21,23 @@ pub fn defuse(prog: &Program) -> DefUse {
 fn walk(block: &Block, prefix: &mut OpPath, du: &mut DefUse) {
     for (i, op) in block.iter().enumerate() {
         prefix.push(i);
-        match op {
-            Op::Measure { b, .. } => du.defs.entry(*b).or_default().push(prefix.clone()),
-            Op::If { cond, then_, else_ } => {
-                for b in cond.bits() {
-                    du.uses.entry(b).or_default().push(prefix.clone());
-                }
-                for (arm, blk) in [then_, else_].into_iter().enumerate() {
-                    prefix.push(arm);
-                    walk(blk, prefix, du);
-                    prefix.pop();
-                }
+        let reads: Vec<Bit> = match op {
+            Op::Measure { b, .. } => {
+                du.defs.entry(*b).or_default().push(prefix.clone());
+                vec![]
             }
-            Op::Loop { body, until, .. } => {
-                for b in until.bits() {
-                    du.uses.entry(b).or_default().push(prefix.clone());
-                }
-                prefix.push(0);
-                walk(body, prefix, du);
-                prefix.pop();
-            }
-            Op::Gate { .. } | Op::Reset { .. } => {}
+            Op::If { cond, .. } => cond.bits().into_iter().collect(),
+            Op::Loop { until, .. } => until.bits().into_iter().collect(),
+            Op::Switch { bits, .. } => bits.clone(),
+            Op::Gate { .. } | Op::Reset { .. } => vec![],
+        };
+        for b in reads {
+            du.uses.entry(b).or_default().push(prefix.clone());
+        }
+        for (arm, blk) in op.arms().into_iter().enumerate() {
+            prefix.push(arm);
+            walk(blk, prefix, du);
+            prefix.pop();
         }
         prefix.pop();
     }

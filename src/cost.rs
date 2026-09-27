@@ -6,6 +6,16 @@ use serde::Serialize;
 
 use crate::ir::Op;
 
+/// How a runtime branch costs time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum Sync {
+    /// Only ops inside a taken arm wait for the condition.
+    Ideal,
+    /// Every executed branch stalls all qubits it touches until its
+    /// condition is known plus `t_branch`, taken or not.
+    Block,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct CostModel {
     pub t_1q: f64,
@@ -17,6 +27,9 @@ pub struct CostModel {
     /// Time from the end of a measurement to the start of an op that is
     /// classically conditioned on it.
     pub t_ff: f64,
+    /// Extra stall per executed branch in the `Block` model.
+    pub t_branch: f64,
+    pub sync: Sync,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,6 +54,8 @@ impl CostModel {
         t_meas: 800.0,
         t_reset: 1000.0,
         t_ff: 600.0,
+        t_branch: 0.0,
+        sync: Sync::Ideal,
     };
 
     /// Checks that every time is finite and non-negative and that
@@ -54,6 +69,7 @@ impl CostModel {
             self.t_meas,
             self.t_reset,
             self.t_ff,
+            self.t_branch,
         ];
         if all.iter().any(|t| !t.is_finite() || *t < 0.0) {
             return Err(CostError("times must be finite and >= 0".into()));
@@ -74,7 +90,7 @@ impl CostModel {
             },
             Op::Measure { .. } => self.t_meas,
             Op::Reset { .. } => self.t_reset,
-            Op::If { .. } | Op::Loop { .. } => 0.0,
+            Op::If { .. } | Op::Loop { .. } | Op::Switch { .. } => 0.0,
         }
     }
 }

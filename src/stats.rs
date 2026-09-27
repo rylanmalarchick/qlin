@@ -41,12 +41,11 @@ fn count_gates(block: &Block, all: &mut usize, two: &mut usize) {
                     *two += 1;
                 }
             }
-            Op::If { then_, else_, .. } => {
-                count_gates(then_, all, two);
-                count_gates(else_, all, two);
+            other => {
+                for arm in other.arms() {
+                    count_gates(arm, all, two);
+                }
             }
-            Op::Loop { body, .. } => count_gates(body, all, two),
-            Op::Measure { .. } | Op::Reset { .. } => {}
         }
     }
 }
@@ -113,12 +112,11 @@ fn collect_noise_bits(block: &Block, noise: &BTreeSet<Qubit>, out: &mut BTreeSet
             Op::Measure { q, b } if noise.contains(q) => {
                 out.insert(*b);
             }
-            Op::If { then_, else_, .. } => {
-                collect_noise_bits(then_, noise, out);
-                collect_noise_bits(else_, noise, out);
+            other => {
+                for arm in other.arms() {
+                    collect_noise_bits(arm, noise, out);
+                }
             }
-            Op::Loop { body, .. } => collect_noise_bits(body, noise, out),
-            _ => {}
         }
     }
 }
@@ -144,6 +142,18 @@ fn strip(block: &Block, noise: &BTreeSet<Qubit>, noise_bits: &BTreeSet<Bit>) -> 
                 body: strip(body, noise, noise_bits),
                 until: until.clone(),
                 max_iters: *max_iters,
+            }),
+            Op::Switch {
+                bits,
+                cases,
+                default,
+            } => out.push(Op::Switch {
+                bits: bits.clone(),
+                cases: cases
+                    .iter()
+                    .map(|(v, b)| (v.clone(), strip(b, noise, noise_bits)))
+                    .collect(),
+                default: strip(default, noise, noise_bits),
             }),
             other => out.push(other.clone()),
         }

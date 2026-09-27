@@ -13,14 +13,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 
+  # The full-suite certifiers are #[ignore]d in the fast job. One shard
+  # per test file.
   full:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [defer, fastpath, m0, search, sink]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      # The full-suite certifiers are #[ignore]d in the fast job.
-      - run: cargo test --release -- --ignored
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: full
+      - run: cargo test --release --test ${{ matrix.test }} -- --ignored

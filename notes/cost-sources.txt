@@ -1,0 +1,45 @@
+Cost model sources
+==================
+2026-09-27. One line per preset field: PRESET.field = value | tag | source.
+Tags: calibration (a device calibration snapshot), paper (a published
+number), assumed (no source; the reason follows). tests read this file.
+
+HERON_KINGSTON (IBM Kingston, Heron r2)
+  Calibration snapshot: qiskit-ibm-runtime FakeKingston, last_update_date
+  2026-04-15T09:15:15+02:00, median over all qubits or pairs.
+
+HERON_KINGSTON.t_1q = 32 | calibration | FakeKingston sx and x median, 32 ns
+HERON_KINGSTON.t_2q = 68 | calibration | FakeKingston cz median, 68 ns
+HERON_KINGSTON.t_3q = 408 | assumed | ccx as 6 cz (6 x 68 ns); the 1q gates of the decomposition are not counted
+HERON_KINGSTON.t_meas = 1760 | calibration | FakeKingston measure_2 (mid-circuit measure) median, 1760 ns
+HERON_KINGSTON.t_reset = 2312 | calibration | FakeKingston reset median, 2312 ns
+HERON_KINGSTON.t_ff = 600 | paper | arXiv:2604.03360 (dynamarq), background section: feed-forward latency "approximately 600 ns on IBM hardware"
+HERON_KINGSTON.t_branch = 0 | assumed | no source gives a per-branch controller cost; 0 keeps the Phase 3 decision rule
+
+Cross-checks and conflicts
+  - Final measure on FakeKingston is 2280 ns. 2280 / 68 = 33.5, which
+    agrees with dynamarq's "measurement durations 34x longer" than a 2q
+    gate on Kingston.
+  - dynamarq says the new mid-circuit measure is 65% shorter than the
+    final measure, which gives 0.35 x 2280 = 798 ns. The snapshot gives
+    1760 ns (23% shorter). The two disagree by more than 2x. The preset
+    uses the snapshot, the device's own calibration. The paper and the
+    snapshot may be from different calibration dates.
+  - arXiv:2504.07258 (Heron devices, 2025): "the duration of a
+    measurement ... between 3000 and 4000 ns, depending on which device
+    is used" (measure and reset). Older than the snapshot. Not used.
+  - The model has one t_meas. Programs here end with final measures
+    too. Using the mid-circuit value for every measure underestimates
+    the last layer by 2280 - 1760 = 520 ns per final measure.
+
+HELIOS (Quantinuum Helios): no preset
+  arXiv:2511.05465 (Helios) gives a 2q gate time of about 70 us, ground
+  state cooling of about 3 ms before 2q gates, and an average of 55 ms
+  per depth-1 layer (transport, cooling, and gates). It gives no 1q or
+  measure duration. Selene ships no default durations (all 0). Execution
+  time on Helios is dominated by batched transport and cooling, which
+  this per-op model does not represent. A preset would be mostly
+  assumed values, so none is added.
+
+HERON_LIKE (the Phase 2 and 3 preset) is kept unchanged so that those
+results stay reproducible. Its values were starting guesses.

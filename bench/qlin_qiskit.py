@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
-from qiskit.circuit import Clbit, IfElseOp, WhileLoopOp
+from qiskit.circuit import CASE_DEFAULT, Clbit, IfElseOp, SwitchCaseOp, WhileLoopOp
 from qiskit.circuit.classical import expr, types
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -108,7 +108,8 @@ def _condition_for(qc: QuantumCircuit, e: dict, c: ClassicalRegister, negate: bo
     return expr.logic_not(cond) if negate else cond
 
 
-def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegister) -> None:
+def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegister,
+          switch_as_if: bool = False) -> None:
     for op in block:
         (kind, a), = op.items()
         if kind == "Gate":
@@ -121,26 +122,59 @@ def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegis
             qc.reset(q[a["q"]])
         elif kind == "If":
             with qc.if_test(_condition_for(qc, a["cond"], c)) as else_:
-                _emit(qc, a["then_"], q, c)
+                _emit(qc, a["then_"], q, c, switch_as_if)
             if a["else_"]:
                 with else_:
-                    _emit(qc, a["else_"], q, c)
+                    _emit(qc, a["else_"], q, c, switch_as_if)
+        elif kind == "Switch":
+            # A register over the switch bits; case value bit i is bits[i].
+            bits = a["bits"]
+            name = "s" + "_".join(map(str, bits))
+            reg = next((r for r in qc.cregs if r.name == name), None)
+            if reg is None:
+                reg = ClassicalRegister(name=name, bits=[c[b] for b in bits])
+                qc.add_register(reg)
+            if switch_as_if:
+                _if_chain(qc, reg, a["cases"], a["default"], q, c)
+            else:
+                with qc.switch(reg) as case:
+                    for values, body in a["cases"]:
+                        with case(sum(int(v) << i for i, v in enumerate(values))):
+                            _emit(qc, body, q, c)
+                    if a["default"]:
+                        with case(case.DEFAULT):
+                            _emit(qc, a["default"], q, c)
         elif kind == "Loop":
             # qlin runs the body, then exits when `until` holds. Qiskit's
             # while loop tests first, so the body is written once before it.
-            _emit(qc, a["body"], q, c)
+            _emit(qc, a["body"], q, c, switch_as_if)
             with qc.while_loop(_condition_for(qc, a["until"], c, negate=True)):
-                _emit(qc, a["body"], q, c)
+                _emit(qc, a["body"], q, c, switch_as_if)
         else:
             raise Unsupported(f"op {kind}")
 
 
-def to_qiskit(prog: dict) -> QuantumCircuit:
-    """Builds a Qiskit circuit from a `qlin json` tree."""
+def _if_chain(qc, reg, cases, default, q, c) -> None:
+    """A Switch as nested if/else on `reg == value`, for backends without
+    switch_case."""
+    if not cases:
+        _emit(qc, default, q, c, True)
+        return
+    (values, body), rest = cases[0], cases[1:]
+    with qc.if_test((reg, sum(int(v) << i for i, v in enumerate(values)))) as else_:
+        _emit(qc, body, q, c, True)
+    if rest or default:
+        with else_:
+            _if_chain(qc, reg, rest, default, q, c)
+
+
+def to_qiskit(prog: dict, switch_as_if: bool = False) -> QuantumCircuit:
+    """Builds a Qiskit circuit from a `qlin json` tree. With
+    `switch_as_if`, a Switch becomes a nested if/else chain."""
     q = QuantumRegister(prog["n_qubits"], "q")
     c = ClassicalRegister(max(prog["n_bits"], 1), "c")
     qc = QuantumCircuit(q, c)
-    _emit(qc, prog["body"], q, c)
+    _emit(qc, prog["body"], q, c, switch_as_if)
     return qc
 
 
@@ -241,6 +275,26 @@ def _lines(circ: QuantumCircuit, qmap: dict, cmap: dict, loop_max: int, out: lis
             if false_body is not None and len(false_body.data) > 0:
                 out.append(f"{pad}}} else {{")
                 _lines(false_body, _inner(false_body.qubits, qs), _inner(false_body.clbits, cs), loop_max, out, depth + 1)
+            out.append(f"{pad}}}")
+        elif isinstance(op, SwitchCaseOp):
+            target = op.target
+            if isinstance(target, Clbit):
+                tbits = [bit_index(target)]
+            elif isinstance(target, ClassicalRegister):
+                tbits = [bit_index(b) for b in target]
+            else:
+                raise Unsupported(f"switch target {target!r}")
+            out.append(f"{pad}switch {' '.join(f'c{b}' for b in tbits)} {{")
+            for values, body in op.cases_specifier():
+                qm, cm = _inner(body.qubits, qs), _inner(body.clbits, cs)
+                for v in values:
+                    if v is CASE_DEFAULT:
+                        out.append(f"{pad}  default {{")
+                    else:
+                        bitsv = " ".join("1" if (int(v) >> i) & 1 else "0" for i in range(len(tbits)))
+                        out.append(f"{pad}  case {bitsv} {{")
+                    _lines(body, qm, cm, loop_max, out, depth + 2)
+                    out.append(f"{pad}  }}")
             out.append(f"{pad}}}")
         elif isinstance(op, WhileLoopOp):
             body = op.params[0]

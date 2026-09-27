@@ -11,7 +11,8 @@ use qlin::latency::{expected, records, Expected, Noise};
 use qlin::search::{Problem, SearchError};
 use qlin::sim::{basis_state, simulate};
 use qlin::stats::stats_with_noise;
-use qlin::text::{parse, print};
+use qlin::text::{format_leaf, parse, print};
+use qlin::trace::enumerate;
 use qlin::transform::defer::{apply, Choice};
 use qlin::transform::fastpath::fast_path;
 use qlin::transform::m0::normal_form;
@@ -34,7 +35,13 @@ usage:
                                           (default 1), at most S cases (4096)
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
-MODEL: [--model ideal|block] [--tff NS] [--tbranch NS] on top of HERON_LIKE";
+  qlin traces FILE.qlin                   every per-outcome trace as JSON
+  qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
+             [--noise-qubits I,J] FILE.qlin
+                                          score fixed variants over a cost grid
+MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS] [--tmeas NS]
+       [--t1q NS] [--t2q NS] [--treset NS] (t_3q follows as 6 x t_2q)
+       (default preset heron_like; see notes/cost-sources.txt)";
 
 /// Branch limit for `qlin sim`.
 const SIM_LIMIT: usize = 1 << 16;
@@ -55,16 +62,40 @@ struct Flags {
     block: bool,
     t: Option<usize>,
     size: Option<usize>,
+    kingston: bool,
+    tmeas: Option<f64>,
+    /// Overrides for t_1q, t_2q, t_reset.
+    gates: [Option<f64>; 3],
+    /// Grid for `sweep`: t_meas, t_ff, t_branch values.
+    grid: [Vec<f64>; 3],
 }
 
 impl Flags {
     fn cost(&self) -> Result<CostModel, String> {
-        let mut c = CostModel::HERON_LIKE;
+        let mut c = if self.kingston {
+            CostModel::HERON_KINGSTON
+        } else {
+            CostModel::HERON_LIKE
+        };
         if let Some(t) = self.tff {
             c.t_ff = t;
         }
         if let Some(t) = self.tbranch {
             c.t_branch = t;
+        }
+        if let Some(t) = self.tmeas {
+            c.t_meas = t;
+        }
+        if let Some(t) = self.gates[0] {
+            c.t_1q = t;
+        }
+        if let Some(t) = self.gates[1] {
+            c.t_2q = t;
+            // ccx as 6 two-qubit gates, as in HERON_KINGSTON.
+            c.t_3q = 6.0 * t;
+        }
+        if let Some(t) = self.gates[2] {
+            c.t_reset = t;
         }
         if self.block {
             c.sync = Sync::Block;
@@ -91,10 +122,37 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                 }
             }
             Some("--sink") => f.sink = true,
-            Some(flag @ ("--tff" | "--tbranch" | "--t" | "--size" | "--model")) => {
+            Some("--preset") => {
+                f.kingston = match it.next().map(String::as_str) {
+                    Some("heron_kingston") => true,
+                    Some("heron_like") => false,
+                    other => return Err(format!("bad --preset `{other:?}`")),
+                }
+            }
+            Some(flag @ ("--tmeas-list" | "--tff-list" | "--tbranch-list")) => {
+                let v = it.next().ok_or(USAGE)?;
+                let list: Vec<f64> = v
+                    .split(',')
+                    .map(|x| x.parse().map_err(|_| format!("bad {flag} `{v}`")))
+                    .collect::<Result<_, _>>()?;
+                let slot = match flag {
+                    "--tmeas-list" => 0,
+                    "--tff-list" => 1,
+                    _ => 2,
+                };
+                f.grid[slot] = list;
+            }
+            Some(
+                flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t1q" | "--t2q" | "--treset" | "--t"
+                | "--size" | "--model"),
+            ) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
                 match flag {
+                    "--t1q" => f.gates[0] = Some(v.parse().map_err(|_| bad())?),
+                    "--t2q" => f.gates[1] = Some(v.parse().map_err(|_| bad())?),
+                    "--treset" => f.gates[2] = Some(v.parse().map_err(|_| bad())?),
+                    "--tmeas" => f.tmeas = Some(v.parse().map_err(|_| bad())?),
                     "--tff" => f.tff = Some(v.parse().map_err(|_| bad())?),
                     "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),
                     "--t" => f.t = Some(v.parse().map_err(|_| bad())?),
@@ -166,6 +224,77 @@ fn opt(prog: &Program, f: &Flags) -> Result<String, String> {
         "program": print(&best),
     });
     Ok(report.to_string())
+}
+
+/// Scores fixed variants of `prog` at every point of the grid
+/// (t_meas x t_ff x t_branch, each under the Ideal and Block models). The
+/// variants: source, M0, best defer (searched at each point), and fast
+/// path with and without sink for t = 0..min(m, 6).
+fn sweep(prog: &Program, f: &Flags) -> Result<String, String> {
+    let normal = normal_form(prog);
+    let noise = Noise::new(&normal, &f.noise);
+    let base = f.cost()?;
+    let mut problem =
+        Problem::new(&normal, base, noise.clone(), SIM_LIMIT).map_err(|e| e.to_string())?;
+    let recs = problem.recs.clone();
+    let sunk = sink(&normal, &noise).prog;
+    let m = fast_path(&normal, &recs, &noise, 0, 4096).group_bits;
+    let mut variants: Vec<(String, Program)> = vec![
+        ("source".into(), prog.clone()),
+        ("m0".into(), normal.clone()),
+        ("sink_only".into(), sunk.clone()),
+    ];
+    for t in 0..=m.min(6) {
+        variants.push((
+            format!("fast_t{t}"),
+            fast_path(&normal, &recs, &noise, t, 4096).prog,
+        ));
+        variants.push((
+            format!("sink_fast_t{t}"),
+            fast_path(&sunk, &recs, &noise, t, 4096).prog,
+        ));
+    }
+    let pick = |grid: &Vec<f64>, default: f64| {
+        if grid.is_empty() {
+            vec![default]
+        } else {
+            grid.clone()
+        }
+    };
+    let none = BTreeSet::new();
+    let mut points = Vec::new();
+    for tmeas in pick(&f.grid[0], base.t_meas) {
+        for tff in pick(&f.grid[1], base.t_ff) {
+            for tbranch in pick(&f.grid[2], base.t_branch) {
+                for sync in [Sync::Ideal, Sync::Block] {
+                    let cost = CostModel {
+                        t_meas: tmeas,
+                        t_ff: tff,
+                        t_branch: tbranch,
+                        sync,
+                        ..base
+                    };
+                    cost.validate().map_err(|e| e.to_string())?;
+                    let mut scores = serde_json::Map::new();
+                    for (name, v) in &variants {
+                        let e = expected(v, &recs, &cost, &Noise::new(v, &f.noise), &none)
+                            .map_err(|e| e.to_string())?;
+                        scores.insert(name.clone(), e.mean.into());
+                    }
+                    problem.cost = cost;
+                    let bnb = problem.branch_and_bound().map_err(|e| e.to_string())?;
+                    scores.insert("best_defer".into(), bnb.best.mean.into());
+                    points.push(serde_json::json!({
+                        "t_meas": tmeas, "t_ff": tff, "t_branch": tbranch,
+                        "sync": cost.sync, "scores": scores,
+                    }));
+                }
+            }
+        }
+    }
+    let out =
+        serde_json::json!({ "group_bits": m, "candidates": problem.cands.len(), "points": points });
+    Ok(out.to_string())
 }
 
 /// Expected latency of `prog` on its own outcome records.
@@ -262,6 +391,25 @@ fn run(args: &[String]) -> Result<String, String> {
         "fastpath" => {
             let (file, f) = flags(rest)?;
             fastpath(&load(file)?, &f)
+        }
+        "sweep" => {
+            let (file, f) = flags(rest)?;
+            sweep(&load(file)?, &f)
+        }
+        "traces" => {
+            let [file] = rest else {
+                return Err(USAGE.into());
+            };
+            let traces = enumerate(&load(file)?, SIM_LIMIT).map_err(|e| e.to_string())?;
+            let out: Vec<serde_json::Value> = traces
+                .iter()
+                .map(|t| {
+                    let ops: Vec<String> = t.ops.iter().filter_map(format_leaf).collect();
+                    let outcomes: Vec<(u32, bool)> = t.outcomes.iter().map(|(b, v)| (b.0, *v)).collect();
+                    serde_json::json!({ "outcomes": outcomes, "ops": ops, "truncated": t.truncated })
+                })
+                .collect();
+            serde_json::to_string(&out).map_err(|e| e.to_string())
         }
         "lat" => {
             let (file, f) = flags(rest)?;

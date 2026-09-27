@@ -24,8 +24,10 @@
 ## Build and test
 
 - `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
-- Full-suite certifiers: `cargo test --release -- --ignored` (about 3 minutes).
-- CI job `fast` runs the first line. CI job `full` runs the certifiers.
+- Full-suite certifiers: `cargo test --release -- --ignored` (about 8 minutes).
+- CI job `fast` runs the first line. CI job `full` runs the certifiers, one
+  shard per test file (`defer`, `fastpath`, `m0`, `search`, `sink`). A new
+  ignored test in another file needs a new shard.
 - Python: `cargo build --release`, then `uv run --project bench pytest bench`.
   The bench scripts call `target/release/qlin` (override with `QLIN_BIN`).
 
@@ -42,4 +44,9 @@
   including defer copy qubits. Larger cases are reported as skipped or unchecked.
 - Some tests pin exact counts (benchmarks certified, variants checked). A new
   benchmark changes them. Update the pinned number and its comment together.
+- Selene streams results over a local socket: consume each shot's results
+  while `run_shots` runs (see `bench/selene_run.py`).
+- IBM backends have no switch_case: use `to_qiskit(..., switch_as_if=True)`.
+- Every value in a cost preset needs a tagged line in `notes/cost-sources.txt`
+  (a unit test checks HERON_KINGSTON).
 - bqcp has no license. Call it from a clone. Do not copy its code into this repo.

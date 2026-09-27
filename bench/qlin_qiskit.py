@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
-from qiskit.circuit import Clbit, IfElseOp, WhileLoopOp
+from qiskit.circuit import CASE_DEFAULT, Clbit, IfElseOp, SwitchCaseOp, WhileLoopOp
 from qiskit.circuit.classical import expr, types
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,6 +125,21 @@ def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegis
             if a["else_"]:
                 with else_:
                     _emit(qc, a["else_"], q, c)
+        elif kind == "Switch":
+            # A register over the switch bits; case value bit i is bits[i].
+            bits = a["bits"]
+            name = "s" + "_".join(map(str, bits))
+            reg = next((r for r in qc.cregs if r.name == name), None)
+            if reg is None:
+                reg = ClassicalRegister(name=name, bits=[c[b] for b in bits])
+                qc.add_register(reg)
+            with qc.switch(reg) as case:
+                for values, body in a["cases"]:
+                    with case(sum(int(v) << i for i, v in enumerate(values))):
+                        _emit(qc, body, q, c)
+                if a["default"]:
+                    with case(case.DEFAULT):
+                        _emit(qc, a["default"], q, c)
         elif kind == "Loop":
             # qlin runs the body, then exits when `until` holds. Qiskit's
             # while loop tests first, so the body is written once before it.
@@ -241,6 +256,26 @@ def _lines(circ: QuantumCircuit, qmap: dict, cmap: dict, loop_max: int, out: lis
             if false_body is not None and len(false_body.data) > 0:
                 out.append(f"{pad}}} else {{")
                 _lines(false_body, _inner(false_body.qubits, qs), _inner(false_body.clbits, cs), loop_max, out, depth + 1)
+            out.append(f"{pad}}}")
+        elif isinstance(op, SwitchCaseOp):
+            target = op.target
+            if isinstance(target, Clbit):
+                tbits = [bit_index(target)]
+            elif isinstance(target, ClassicalRegister):
+                tbits = [bit_index(b) for b in target]
+            else:
+                raise Unsupported(f"switch target {target!r}")
+            out.append(f"{pad}switch {' '.join(f'c{b}' for b in tbits)} {{")
+            for values, body in op.cases_specifier():
+                qm, cm = _inner(body.qubits, qs), _inner(body.clbits, cs)
+                for v in values:
+                    if v is CASE_DEFAULT:
+                        out.append(f"{pad}  default {{")
+                    else:
+                        bitsv = " ".join("1" if (int(v) >> i) & 1 else "0" for i in range(len(tbits)))
+                        out.append(f"{pad}  case {bitsv} {{")
+                    _lines(body, qm, cm, loop_max, out, depth + 2)
+                    out.append(f"{pad}  }}")
             out.append(f"{pad}}}")
         elif isinstance(op, WhileLoopOp):
             body = op.params[0]

@@ -11,7 +11,8 @@ use qlin::latency::{expected, records, Expected, Noise};
 use qlin::search::{Problem, SearchError};
 use qlin::sim::{basis_state, simulate};
 use qlin::stats::stats_with_noise;
-use qlin::text::{parse, print};
+use qlin::text::{format_leaf, parse, print};
+use qlin::trace::enumerate;
 use qlin::transform::defer::{apply, Choice};
 use qlin::transform::fastpath::fast_path;
 use qlin::transform::m0::normal_form;
@@ -34,6 +35,7 @@ usage:
                                           (default 1), at most S cases (4096)
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
+  qlin traces FILE.qlin                   every per-outcome trace as JSON
   qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
@@ -373,6 +375,21 @@ fn run(args: &[String]) -> Result<String, String> {
         "sweep" => {
             let (file, f) = flags(rest)?;
             sweep(&load(file)?, &f)
+        }
+        "traces" => {
+            let [file] = rest else {
+                return Err(USAGE.into());
+            };
+            let traces = enumerate(&load(file)?, SIM_LIMIT).map_err(|e| e.to_string())?;
+            let out: Vec<serde_json::Value> = traces
+                .iter()
+                .map(|t| {
+                    let ops: Vec<String> = t.ops.iter().filter_map(format_leaf).collect();
+                    let outcomes: Vec<(u32, bool)> = t.outcomes.iter().map(|(b, v)| (b.0, *v)).collect();
+                    serde_json::json!({ "outcomes": outcomes, "ops": ops, "truncated": t.truncated })
+                })
+                .collect();
+            serde_json::to_string(&out).map_err(|e| e.to_string())
         }
         "lat" => {
             let (file, f) = flags(rest)?;

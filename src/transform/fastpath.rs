@@ -31,8 +31,9 @@ pub struct FastPath {
     pub t: usize,
     /// Case blocks emitted in the whole tree.
     pub size: usize,
-    /// Groups found in the source.
+    /// Groups found in the source, and their bits in total (m).
     pub groups: usize,
+    pub group_bits: usize,
     /// Times a group was left generic in some branch of the tree (too many
     /// bits, or the size limit).
     pub generic_groups: usize,
@@ -312,6 +313,7 @@ pub fn fast_path(
         t,
         size: b.size,
         groups: gs.len(),
+        group_bits: gs.iter().map(|g| g.bits.len()).sum(),
         generic_groups: b.generic,
         exit_prob,
     }

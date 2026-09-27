@@ -3,16 +3,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
-use qlin::cost::CostModel;
+use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
-use qlin::latency::{expected, Noise};
+use qlin::latency::{expected, records, Expected, Noise};
 use qlin::search::{Problem, SearchError};
 use qlin::sim::{basis_state, simulate};
 use qlin::stats::stats_with_noise;
 use qlin::text::{parse, print};
 use qlin::transform::defer::{apply, Choice};
+use qlin::transform::fastpath::fast_path;
 use qlin::transform::m0::normal_form;
+use qlin::transform::sink::sink;
 
 const USAGE: &str = "\
 usage:
@@ -23,10 +25,15 @@ usage:
   qlin sim FILE.qlin                      print the output distribution from |0...0> as JSON
   qlin fmt FILE.qlin                      print the program in canonical form
   qlin json FILE.qlin                     print the program tree as JSON
-  qlin opt [--tff NS] [--noise-qubits I,J] [--check] [--json] FILE.qlin
-                                          choose which Ifs to defer (cost model
-                                          HERON_LIKE, t_ff overridable). Prints
-                                          the best program, or a JSON report";
+  qlin opt [MODEL] [--noise-qubits I,J] [--check] [--json] FILE.qlin
+                                          choose which Ifs to defer. Prints
+                                          the best program, or a JSON report
+  qlin fastpath [--t T] [--size S] [--sink] [MODEL] [--noise-qubits I,J] [--json] FILE.qlin
+                                          fast path over the outcome budget t
+                                          (default 1), at most S cases (4096)
+  qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
+                                          expected latency as JSON
+MODEL: [--model ideal|block] [--tff NS] [--tbranch NS] on top of HERON_LIKE";
 
 /// Branch limit for `qlin sim`.
 const SIM_LIMIT: usize = 1 << 16;
@@ -40,8 +47,30 @@ fn load(path: &str) -> Result<Program, String> {
 struct Flags {
     json: bool,
     check: bool,
+    sink: bool,
     noise: BTreeSet<Qubit>,
     tff: Option<f64>,
+    tbranch: Option<f64>,
+    block: bool,
+    t: Option<usize>,
+    size: Option<usize>,
+}
+
+impl Flags {
+    fn cost(&self) -> Result<CostModel, String> {
+        let mut c = CostModel::HERON_LIKE;
+        if let Some(t) = self.tff {
+            c.t_ff = t;
+        }
+        if let Some(t) = self.tbranch {
+            c.t_branch = t;
+        }
+        if self.block {
+            c.sync = Sync::Block;
+        }
+        c.validate().map_err(|e| e.to_string())?;
+        Ok(c)
+    }
 }
 
 /// Splits `FLAGS... FILE` and parses the flags.
@@ -60,9 +89,23 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                     f.noise.insert(Qubit(q));
                 }
             }
-            Some("--tff") => {
+            Some("--sink") => f.sink = true,
+            Some(flag @ ("--tff" | "--tbranch" | "--t" | "--size" | "--model")) => {
                 let v = it.next().ok_or(USAGE)?;
-                f.tff = Some(v.parse().map_err(|_| format!("bad --tff `{v}`"))?);
+                let bad = || format!("bad {flag} `{v}`");
+                match flag {
+                    "--tff" => f.tff = Some(v.parse().map_err(|_| bad())?),
+                    "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),
+                    "--t" => f.t = Some(v.parse().map_err(|_| bad())?),
+                    "--size" => f.size = Some(v.parse().map_err(|_| bad())?),
+                    _ => {
+                        f.block = match v.as_str() {
+                            "block" => true,
+                            "ideal" => false,
+                            _ => return Err(bad()),
+                        }
+                    }
+                }
             }
             Some(other) => return Err(format!("unknown flag `{other}`\n{USAGE}")),
             None => {}
@@ -73,11 +116,7 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
 
 /// Runs the defer search on the M0 normal form of `prog`.
 fn opt(prog: &Program, f: &Flags) -> Result<String, String> {
-    let mut cost = CostModel::HERON_LIKE;
-    if let Some(t) = f.tff {
-        cost.t_ff = t;
-    }
-    cost.validate().map_err(|e| e.to_string())?;
+    let cost = f.cost()?;
     let normal = normal_form(prog);
     let noise = Noise::new(&normal, &f.noise);
     let mut problem =
@@ -128,6 +167,58 @@ fn opt(prog: &Program, f: &Flags) -> Result<String, String> {
     Ok(report.to_string())
 }
 
+/// Expected latency of `prog` on its own outcome records.
+fn lat(prog: &Program, f: &Flags) -> Result<Expected, String> {
+    let recs = records(prog, SIM_LIMIT).map_err(|e| e.to_string())?;
+    expected(
+        prog,
+        &recs,
+        &f.cost()?,
+        &Noise::new(prog, &f.noise),
+        &BTreeSet::new(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Normal form, optional sink, then the fast path.
+fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
+    let cost = f.cost()?;
+    let normal = normal_form(prog);
+    let noise = Noise::new(&normal, &f.noise);
+    let (base, moved) = if f.sink {
+        let s = sink(&normal, &noise);
+        (s.prog, s.moved)
+    } else {
+        (normal.clone(), 0)
+    };
+    let recs = records(&base, SIM_LIMIT).map_err(|e| e.to_string())?;
+    let fp = fast_path(
+        &base,
+        &recs,
+        &noise,
+        f.t.unwrap_or(1),
+        f.size.unwrap_or(4096),
+    );
+    if !f.json {
+        return Ok(print(&fp.prog));
+    }
+    let none = BTreeSet::new();
+    let score = |p: &Program| {
+        expected(p, &recs, &cost, &Noise::new(p, &f.noise), &none).map_err(|e| e.to_string())
+    };
+    let report = serde_json::json!({
+        "cost": cost,
+        "source": score(prog)?,
+        "m0": score(&normal)?,
+        "base": score(&base)?,
+        "fast": score(&fp.prog)?,
+        "sink_moved": moved,
+        "fastpath": fp,
+        "program": print(&fp.prog),
+    });
+    Ok(report.to_string())
+}
+
 fn run(args: &[String]) -> Result<String, String> {
     let (cmd, rest) = args.split_first().ok_or(USAGE)?;
     match cmd.as_str() {
@@ -158,6 +249,14 @@ fn run(args: &[String]) -> Result<String, String> {
         "opt" => {
             let (file, f) = flags(rest)?;
             opt(&load(file)?, &f)
+        }
+        "fastpath" => {
+            let (file, f) = flags(rest)?;
+            fastpath(&load(file)?, &f)
+        }
+        "lat" => {
+            let (file, f) = flags(rest)?;
+            serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string())
         }
         "sim" => {
             let [file] = rest else {

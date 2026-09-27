@@ -37,14 +37,13 @@ pub fn sink(prog: &Program, noise: &Noise) -> Sunk {
         };
         let cond = cond.clone();
         let mut at = i;
-        for j in i + 1..body.len() {
+        for (j, next) in body.iter().enumerate().skip(i + 1) {
             let here = Op::If {
                 cond: cond.clone(),
                 then_: to_ops(&pt),
                 else_: to_ops(&pe),
             }
             .footprint();
-            let next = &body[j];
             let fp = next.footprint();
             let passes = if here.disjoint(&fp) {
                 true

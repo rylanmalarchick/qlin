@@ -26,12 +26,14 @@ a lower bound on what must stay runtime-decided.
 
 1. CURRENT FOCUS (the handoff. Update it when it changes.)
 ==========================================================
-  STATE 2026-09-25 (late). Phases 0 and 1 merged. Phase 2 built on
-  branch phase2. G2 PASSED: branch and bound = exhaustive optimum on
-  180 of 180 certified rows, 0 bound violations, 3046 search variants
-  checked by simulation (26 over 12 qubits not checked).
-  Next: merge the phase2 PR, then Phase 3 (fast path over M_t).
-  Open for Rylan: report the bqcp bug upstream (notes/bqcp-bug.txt).
+  STATE 2026-09-26. Phases 0 to 2 merged. Phase 3 built on branch
+  phase3. G3: items 1 and 2 PASS. Pitch decision (item 3): "method +
+  bound + soundness". At t_branch = 0 no benchmark gains 10% (best
+  9.5%). With a branch overhead (t_branch 200 to 1000 ns) the fast path
+  gains 16% to 78% on the five-qubit and repetition5 codes.
+  Next: merge the phase3 PR, then Phase 4 (device cost model).
+  Open for Rylan: contact Yuan with the G3 table (item 4). Report the
+  bqcp bug (notes/bqcp-bug.txt).
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -293,23 +295,40 @@ Phase 2. M0 normal form, defer, and branch and bound.     ~3 weeks
        Pivot: any violation is a bug, so fix it before Phase 3.
        RESULT: PASS (results/phase2.md).
 
-Phase 3. Fast path, exit edges, fallback.                    ~3 weeks
-  3.1  Decision tree over prefixes in M_t.
-  3.2  Exit edges and classical compensation code.
-  3.3  Fallback: the source program, compiled once, one entry per exit
-       edge.
-  3.4  Soundness check per section 8, for every outcome, on m <= 12.
-  3.5  t-sweep from 0 to m on every benchmark: fast-path size, exit
-       probability, expected latency.
-  G3   Soundness check passes on every benchmark and fails on a planted
-       wrong rewrite. Pitch decision, by the modeled gain against the
-       best baseline:
-         - gain >= 10% expected latency on at least 2 benchmarks: pitch
-           is "method + gain". Consider a workshop (X3).
-         - smaller gain: pitch is "method + bound + soundness". Write-up
-           only, no venue push.
-       Contact Yuan with the G3 table and a draft outline (proposed,
-       Rylan decides).
+Phase 3. Fast path, exit edges, fallback.                    ~4 weeks
+  (Restated 2026-09-26 by Rylan. Under the Phase 2 ideal-controller
+  model an untaken If is free, so a fast path cannot gain. Gain sources:
+  branch overhead first, then Pauli-frame sinking.)
+  3.0  CI in two jobs: fast, and full (certifiers run by name).
+  3.1  Switch op: one runtime branch that dispatches on several bits.
+  3.2  Block-sync latency model: an executed branch stalls every qubit
+       it touches until its condition is known, taken or not. The
+       controller decides branches one at a time, t_branch each.
+       (The serial controller corrects the first definition, where
+       branches on the same bits stalled to the same time and a Switch
+       could never gain.)
+  3.3  Fast path F(P, t, S): at each dispatch group, a Switch with one
+       case per assignment within the remaining budget, the selected
+       arms, then F of the rest. Default = the original group and rest
+       (fallback). The exit is at the dispatch, so compensation is empty.
+  3.4  Soundness by simulation.
+  3.5  Pauli sink: a Pauli correction moves forward through Clifford
+       gates, conjugated at compile time. Prior art: Pauli frames
+       (Knill 2005, Riesebos et al. 2017).
+  3.6  Sweep: t = 0..min(m, 6), t_branch in {0, 200, 1000}, fast path
+       with and without sink, against source, M0, best defer (Phase 2
+       search in the same model), bqcp, and Qiskit O3.
+  G3   1. Every fast-path and sink variant passes the simulation check.
+       2. Phase 2 certification holds under block sync.
+       3. Pitch decision at t_ff = 600, t_branch = 0 (no assumed
+          overhead): gain >= 10% on at least 2 benchmarks gives
+          "method + gain", else "method + bound + soundness".
+       4. Rylan decides on contacting Yuan.
+       RESULT: 1 and 2 PASS. 3: "method + bound + soundness".
+       (results/phase3.md)
+  Out of scope: unrolling measured-exit loops (a loop exit stays a
+  runtime check), a joint defer + fast-path search, Switch in the
+  Qiskit bridge.
 
 Phase 4. Device cost model and falsification.                ~2 weeks
   4.1  Parameters: measure time and error, feedforward latency, native
@@ -411,7 +430,13 @@ empirical, heuristic.
       empirical (simulation check, finite inputs and witnesses: sound,
       not complete)
   C8  Fast-path size stays within S for t <= 2 on the QEC benchmarks.
-                                                   empirical, not run
+                        empirical: every evaluated benchmark fits in
+                        S = 4096 up to t = 6 (results/phase3.csv)
+  C10 The fast path and the Pauli sink preserve the output distribution
+      and state.   empirical (simulation check, 282 sweep variants and
+                   the full-suite tests: sound, not complete)
+  C11 Pauli conjugation table (h s sdg sx x y z cx cy cz swap).
+                   machine-checked against the simulator, 96 cases
   C9  The relaxation (undecided Ifs without feedforward wait) is a lower
       bound on every completion. hand-derived, checked on every prefix
       of 180 exhaustive rows (0 violations)
@@ -437,6 +462,11 @@ empirical, heuristic.
   2026-09-25  G1 restated: gate on ff > 0 after bqcp on a noise-aware
               reference, not on movable ops. Noise is a random X per data
               qubit from one noise-source qubit. Noise ops do not count.
+  2026-09-26  Phase 3 gain sources: branch overhead, then Pauli sink
+              (Rylan). Block model uses a serial controller (see Phase 3).
+  2026-09-26  CI split into fast and full jobs (Rylan).
+  2026-09-26  Pitch decision uses t_branch = 0, so no assumed branch
+              overhead enters the decision.
   2026-09-25  Phase 2 searches defer choices, not M0 moves (Rylan).
   2026-09-25  Phase 2 latency model is the ideal controller. The IBM
               block-sync model moves to Phase 4.
@@ -494,6 +524,26 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-26  Phase 3 built (branch phase3). G3 items 1, 2 PASS. Pitch:
+              "method + bound + soundness". Numbers are modeled (block
+              sync, HERON_LIKE assumed, t_ff 600). results/phase3.md.
+              - 47 benchmarks evaluated, 3 skipped (over 12 qubits).
+              - 282 sweep variants pass the simulation check.
+              Findings:
+              1. At t_branch = 0 the only gains come from the Pauli sink
+                 on the |+> repetition codes, where corrections pass the
+                 unencoding Cliffords: repetition5_1_noisy 9.5%,
+                 repetition3_1_noisy 3.1%. Below the 10% bar.
+              2. With branch overhead the fast path wins on lookup
+                 decoders: many Ifs on the same bits become one Switch.
+                 t_branch 200: repetition5 noisy 45-47%, five-qubit 16%.
+                 t_branch 1000: 61-78%. The gain is only as real as
+                 t_branch, which Phase 4 must measure or bound.
+              3. Exit probability decides the best t. A global budget
+                 over groups with random bits (the five-qubit code's
+                 logical readout) makes t = 0 exit 95% of the time.
+              4. On all other benchmarks the best baseline (often the
+                 Phase 2 defer) is not beaten.
   2026-09-25  Phase 2 built (branch phase2). G2 PASSED.
               Numbers are modeled: cost model HERON_LIKE (assumed), t_ff
               swept over 0, 150, 600, 2400 ns. results/phase2.md.

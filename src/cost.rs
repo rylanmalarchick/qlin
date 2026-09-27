@@ -58,6 +58,20 @@ impl CostModel {
         sync: Sync::Ideal,
     };
 
+    /// IBM Kingston (Heron r2). Each value and its source is listed in
+    /// notes/cost-sources.txt: calibration snapshot for gates, measure,
+    /// and reset; arXiv:2604.03360 for t_ff; t_3q and t_branch assumed.
+    pub const HERON_KINGSTON: CostModel = CostModel {
+        t_1q: 32.0,
+        t_2q: 68.0,
+        t_3q: 408.0,
+        t_meas: 1760.0,
+        t_reset: 2312.0,
+        t_ff: 600.0,
+        t_branch: 0.0,
+        sync: Sync::Ideal,
+    };
+
     /// Checks that every time is finite and non-negative and that
     /// `t_1q <= t_2q <= t_3q`. The relaxation bound needs the ordering: a
     /// controlled gate is never faster than its base gate.
@@ -98,6 +112,39 @@ impl CostModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every field of HERON_KINGSTON has a tagged line in the sources
+    /// file, with the same value.
+    #[test]
+    fn kingston_values_match_their_source_lines() {
+        let notes = include_str!("../notes/cost-sources.txt");
+        let c = CostModel::HERON_KINGSTON;
+        let fields = [
+            ("t_1q", c.t_1q),
+            ("t_2q", c.t_2q),
+            ("t_3q", c.t_3q),
+            ("t_meas", c.t_meas),
+            ("t_reset", c.t_reset),
+            ("t_ff", c.t_ff),
+            ("t_branch", c.t_branch),
+        ];
+        for (name, value) in fields {
+            let key = format!("HERON_KINGSTON.{name} = ");
+            let line = notes
+                .lines()
+                .find(|l| l.starts_with(&key))
+                .unwrap_or_else(|| panic!("no source line for {name}"));
+            let parts: Vec<&str> = line[key.len()..].split(" | ").collect();
+            assert_eq!(parts.len(), 3, "{line}");
+            assert_eq!(parts[0].parse::<f64>().unwrap(), value, "{name}");
+            assert!(
+                ["calibration", "paper", "assumed"].contains(&parts[1]),
+                "{line}"
+            );
+            assert!(!parts[2].trim().is_empty(), "{line}");
+        }
+        assert!(c.validate().is_ok());
+    }
 
     #[test]
     fn preset_is_valid_and_bad_orders_are_rejected() {

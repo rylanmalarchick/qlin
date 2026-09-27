@@ -34,7 +34,8 @@ usage:
                                           (default 1), at most S cases (4096)
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
-MODEL: [--model ideal|block] [--tff NS] [--tbranch NS] on top of HERON_LIKE";
+MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS]
+       (default preset heron_like; see notes/cost-sources.txt)";
 
 /// Branch limit for `qlin sim`.
 const SIM_LIMIT: usize = 1 << 16;
@@ -55,11 +56,16 @@ struct Flags {
     block: bool,
     t: Option<usize>,
     size: Option<usize>,
+    kingston: bool,
 }
 
 impl Flags {
     fn cost(&self) -> Result<CostModel, String> {
-        let mut c = CostModel::HERON_LIKE;
+        let mut c = if self.kingston {
+            CostModel::HERON_KINGSTON
+        } else {
+            CostModel::HERON_LIKE
+        };
         if let Some(t) = self.tff {
             c.t_ff = t;
         }
@@ -91,6 +97,13 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                 }
             }
             Some("--sink") => f.sink = true,
+            Some("--preset") => {
+                f.kingston = match it.next().map(String::as_str) {
+                    Some("heron_kingston") => true,
+                    Some("heron_like") => false,
+                    other => return Err(format!("bad --preset `{other:?}`")),
+                }
+            }
             Some(flag @ ("--tff" | "--tbranch" | "--t" | "--size" | "--model")) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");

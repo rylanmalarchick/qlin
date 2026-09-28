@@ -1,7 +1,9 @@
 """Phase 4 IBM run: measured time per variant against the model's ranking.
 
 Run: cargo build --release, then
-     uv run --project bench python bench/run_phase4_ibm.py            # submits jobs
+     uv run --project bench python bench/run_phase4_ibm.py            # submits jobs (30 s cap)
+     uv run --project bench python bench/run_phase4_ibm.py --budget 60 # raise the cap
+     uv run --project bench python bench/run_phase4_ibm.py --probe     # also rerun the branch probe
      uv run --project bench python bench/run_phase4_ibm.py --dry-run  # offline
 
 The model's durations come from the backend target (calibration medians).
@@ -34,7 +36,8 @@ SHOTS = 1000
 REPEATS = 3
 # Branch-cost probe: k sequential if_else blocks on one measured bit.
 PROBE_KS = [0, 1, 2, 4, 8]
-BUDGET_S = 300
+BUDGET_S = 30  # per run; raise only with --budget SECONDS
+SMOKE_SHOTS = 100
 MIN_REMAINING_S = 60
 # The device the HERON_KINGSTON preset comes from.
 BACKEND = "ibm_kingston"
@@ -113,7 +116,7 @@ def spearman(a: list[float], b: list[float]) -> float:
     return 1 - 6 * sum((x - y) ** 2 for x, y in zip(ra, rb)) / (n * (n * n - 1))
 
 
-def main(dry: bool) -> int:
+def main(dry: bool, probe: bool = False) -> int:
     RESULTS.mkdir(exist_ok=True)
     if dry:
         from qiskit_ibm_runtime.fake_provider import FakeKingston
@@ -152,10 +155,19 @@ def main(dry: bool) -> int:
         return used < BUDGET_S
 
     def measure(circ) -> tuple[list[float], list[str], str | None]:
-        """Per-shot ns for each repeat, the job ids, and a failure reason."""
+        """Per-shot ns for each repeat, the job ids, and a failure reason.
+        A SMOKE_SHOTS job runs first. The repeats run only if it succeeds."""
         from qiskit_ibm_runtime import SamplerV2
         from qiskit_ibm_runtime.exceptions import RuntimeJobFailureError
         times, ids = [], []
+        if not budget_left():
+            return times, ids, "budget reached"
+        smoke = SamplerV2(mode=backend).run([circ], shots=SMOKE_SHOTS)
+        ids.append(smoke.job_id())
+        try:
+            smoke.result()
+        except RuntimeJobFailureError as e:
+            return times, ids, "smoke job failed: " + str(e).splitlines()[0][:180]
         for _ in range(REPEATS):
             if not budget_left():
                 return times, ids, "budget reached"
@@ -172,7 +184,9 @@ def main(dry: bool) -> int:
     def save() -> None:
         _write(rows, backend.name, cal, dry)
 
-    for k in PROBE_KS:
+    # The branch-cost probe is opt-in (--probe): it was measured on
+    # 2026-09-27 and costs device time on every run.
+    for k in PROBE_KS if probe else []:
         circ = transpile(branch_probe(k), backend=backend, optimization_level=1, seed_transpiler=0)
         row = {"benchmark": "branch_probe", "variant": f"k={k}", "k": k, "ideal_ns": None,
                "block_ns": None, "depth": circ.depth(), "times": [], "jobs": [], "why": None}
@@ -183,6 +197,7 @@ def main(dry: bool) -> int:
         print("probe", k, row["times"], row["why"], flush=True)
 
     for path in BENCHES:
+        failed = None
         for name, qtext in variants(str(ROOT / path), flags).items():
             # The circuit the device runs, back in qlin form for the model.
             circ0 = to_qiskit(json.loads(qlin_text(qtext, "json")), switch_as_if=True)
@@ -191,11 +206,16 @@ def main(dry: bool) -> int:
             block = json.loads(qlin_text(text, "lat", *flags, "--model", "block"))["mean"]
             row = {"benchmark": path, "variant": name, "ideal_ns": ideal, "block_ns": block,
                    "depth": None, "times": [], "jobs": [], "why": ibm_violation(circ0)}
+            if row["why"] is None and failed:
+                row["why"] = f"skipped: {failed}"
             if row["why"] is None:
                 circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
                 row["depth"] = circ.depth()
                 if not dry:
                     row["times"], row["jobs"], row["why"] = measure(circ)
+                    if row["why"] and row["why"].startswith("smoke"):
+                        # One failure class per benchmark: do not repeat it on siblings.
+                        failed = f"{name} failed the smoke job"
             rows.append(row)
             save()
             print(path, name, ideal, block, row["times"], row["why"], flush=True)
@@ -250,4 +270,6 @@ def _write(rows, backend_name, cal, dry) -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main("--dry-run" in sys.argv))
+    if "--budget" in sys.argv:
+        BUDGET_S = int(sys.argv[sys.argv.index("--budget") + 1])
+    sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv))

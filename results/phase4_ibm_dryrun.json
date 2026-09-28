@@ -1,11 +1,68 @@
 [
  {
+  "benchmark": "branch_probe",
+  "variant": "k=0",
+  "k": 0,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 4,
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=1",
+  "k": 1,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 6,
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=2",
+  "k": 2,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 7,
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=4",
+  "k": 4,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 9,
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=8",
+  "k": 8,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 13,
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
   "benchmark": "benchmarks/jeff/teleportation.qlin",
   "variant": "source",
   "ideal_ns": 3770.0000000000005,
   "block_ns": 4368.0,
   "depth": 18,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/jeff/teleportation.qlin",
@@ -13,23 +70,39 @@
   "ideal_ns": 2096.0,
   "block_ns": 2096.0,
   "depth": 23,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 3746.0000000000005,
+  "block_ns": 4336.0,
+  "depth": 15,
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/jeff/teleportation.qlin",
   "variant": "fast_t1",
   "ideal_ns": 4384.0,
   "block_ns": 4384.0,
-  "depth": 13,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  },
  {
   "benchmark": "benchmarks/jeff/teleportation.qlin",
   "variant": "sink_fast_t1",
   "ideal_ns": 4352.0,
   "block_ns": 4352.0,
-  "depth": 13,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  },
  {
   "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
@@ -37,7 +110,9 @@
   "ideal_ns": 6737.749999999999,
   "block_ns": 7993.999999999998,
   "depth": 182,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
@@ -45,23 +120,39 @@
   "ideal_ns": 5424.749999999999,
   "block_ns": 5681.999999999999,
   "depth": 214,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 6342.749999999999,
+  "block_ns": 7351.999999999998,
+  "depth": 175,
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
   "variant": "fast_t1",
   "ideal_ns": 7526.499999999998,
   "block_ns": 8025.999999999998,
-  "depth": 94,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  },
  {
   "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
   "variant": "sink_fast_t1",
   "ideal_ns": 6981.249999999999,
   "block_ns": 7351.999999999998,
-  "depth": 112,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  },
  {
   "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
@@ -69,7 +160,9 @@
   "ideal_ns": 2404.0,
   "block_ns": 4764.0,
   "depth": 59,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
@@ -77,22 +170,38 @@
   "ideal_ns": 2404.0,
   "block_ns": 4764.0,
   "depth": 59,
-  "measured_ns_per_shot": null
+  "times": [],
+  "jobs": [],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 2404.0,
+  "block_ns": 4764.0,
+  "depth": 59,
+  "times": [],
+  "jobs": [],
+  "why": null
  },
  {
   "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
   "variant": "fast_t1",
   "ideal_ns": 4764.0,
   "block_ns": 4764.0,
-  "depth": 44,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  },
  {
   "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
   "variant": "sink_fast_t1",
   "ideal_ns": 4764.0,
   "block_ns": 4764.0,
-  "depth": 44,
-  "measured_ns_per_shot": null
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
  }
 ]

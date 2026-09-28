@@ -31,6 +31,9 @@ RESULTS = ROOT / "results"
 BENCHES = ["benchmarks/jeff/teleportation.qlin", "benchmarks/dynamarq/five_qubit_code.qlin",
            "benchmarks/dynamarq/repetition5_0.qlin"]
 SHOTS = 1000
+REPEATS = 3
+# Branch-cost probe: k sequential if_else blocks on one measured bit.
+PROBE_KS = [0, 1, 2, 4, 8]
 BUDGET_S = 300
 MIN_REMAINING_S = 60
 # The device the HERON_KINGSTON preset comes from.
@@ -59,9 +62,43 @@ def variants(path: str, flags: list[str]) -> dict[str, str]:
     return {
         "source": qlin("fmt", path),
         "best_defer": qlin("opt", *flags, path),
+        "sink_only": qlin("fastpath", "--t", "0", "--size", "0", "--sink", path),
         "fast_t1": qlin("fastpath", "--t", "1", path),
         "sink_fast_t1": qlin("fastpath", "--t", "1", "--sink", path),
     }
+
+
+def ibm_violation(circ, inside: bool = False) -> str | None:
+    """The first IBM dynamic-circuit rule the circuit breaks, or None.
+    Rules (IBM docs, execute-dynamic-circuits): no nested conditionals, no
+    measure or reset inside a conditional, no for, while, or switch."""
+    for inst in circ.data:
+        op = inst.operation
+        if op.name in ("for_loop", "while_loop", "switch_case"):
+            return f"{op.name} is not supported"
+        if inside and op.name in ("measure", "reset"):
+            return f"{op.name} inside a conditional"
+        if op.name == "if_else":
+            if inside:
+                return "nested conditional"
+            for block in op.blocks:
+                why = ibm_violation(block, inside=True)
+                if why:
+                    return why
+    return None
+
+
+def branch_probe(k: int):
+    """h, measure c0, then k if_else blocks on c0 (each flips q1), measure q1."""
+    from qiskit import QuantumCircuit
+    qc = QuantumCircuit(2, 2)
+    qc.h(0)
+    qc.measure(0, 0)
+    for _ in range(k):
+        with qc.if_test((qc.clbits[0], 1)):
+            qc.x(1)
+    qc.measure(1, 1)
+    return qc
 
 
 def spearman(a: list[float], b: list[float]) -> float:
@@ -106,7 +143,45 @@ def main(dry: bool) -> int:
         backend = service.backend(BACKEND)
     cal = calibration(backend)
     flags = model_flags(cal)
-    rows, used_s = [], 0.0
+    rows: list[dict] = []
+
+    def budget_left() -> bool:
+        if dry:
+            return False
+        used = service.usage().get("usage_consumed_seconds", 0) - start_consumed
+        return used < BUDGET_S
+
+    def measure(circ) -> tuple[list[float], list[str], str | None]:
+        """Per-shot ns for each repeat, the job ids, and a failure reason."""
+        from qiskit_ibm_runtime import SamplerV2
+        from qiskit_ibm_runtime.exceptions import RuntimeJobFailureError
+        times, ids = [], []
+        for _ in range(REPEATS):
+            if not budget_left():
+                return times, ids, "budget reached"
+            job = SamplerV2(mode=backend).run([circ], shots=SHOTS)
+            ids.append(job.job_id())
+            try:
+                res = job.result()
+            except RuntimeJobFailureError as e:
+                return times, ids, str(e).splitlines()[0][:200]
+            spans = res.metadata["execution"]["execution_spans"]
+            times.append(sum((sp.stop - sp.start).total_seconds() for sp in spans) / SHOTS * 1e9)
+        return times, ids, None
+
+    def save() -> None:
+        _write(rows, backend.name, cal, dry)
+
+    for k in PROBE_KS:
+        circ = transpile(branch_probe(k), backend=backend, optimization_level=1, seed_transpiler=0)
+        row = {"benchmark": "branch_probe", "variant": f"k={k}", "k": k, "ideal_ns": None,
+               "block_ns": None, "depth": circ.depth(), "times": [], "jobs": [], "why": None}
+        if not dry:
+            row["times"], row["jobs"], row["why"] = measure(circ)
+        rows.append(row)
+        save()
+        print("probe", k, row["times"], row["why"], flush=True)
+
     for path in BENCHES:
         for name, qtext in variants(str(ROOT / path), flags).items():
             # The circuit the device runs, back in qlin form for the model.
@@ -114,44 +189,61 @@ def main(dry: bool) -> int:
             text = from_qiskit(circ0)
             ideal = json.loads(qlin_text(text, "lat", *flags))["mean"]
             block = json.loads(qlin_text(text, "lat", *flags, "--model", "block"))["mean"]
-            circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
             row = {"benchmark": path, "variant": name, "ideal_ns": ideal, "block_ns": block,
-                   "depth": circ.depth(), "measured_ns_per_shot": None}
-            if not dry:
-                # IBM's own usage counter, checked before every job.
-                used_s = service.usage().get("usage_consumed_seconds", 0) - start_consumed
-            if not dry and used_s < BUDGET_S:
-                from qiskit_ibm_runtime import SamplerV2
-                job = SamplerV2(mode=backend).run([circ], shots=SHOTS)
-                res = job.result()
-                spans = res.metadata["execution"]["execution_spans"]
-                total = sum((s.stop - s.start).total_seconds() for s in spans)
-                row["measured_ns_per_shot"] = total / SHOTS * 1e9
-                row["job"] = job.job_id()
+                   "depth": None, "times": [], "jobs": [], "why": ibm_violation(circ0)}
+            if row["why"] is None:
+                circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
+                row["depth"] = circ.depth()
+                if not dry:
+                    row["times"], row["jobs"], row["why"] = measure(circ)
             rows.append(row)
-            print(path, name, row["ideal_ns"], row["block_ns"], row["measured_ns_per_shot"], flush=True)
-    _write(rows, backend.name, cal, dry)
+            save()
+            print(path, name, ideal, block, row["times"], row["why"], flush=True)
     return 0
+
+
+def _mean_sd(xs: list[float]) -> tuple[float, float] | None:
+    if not xs:
+        return None
+    return st.mean(xs), (st.stdev(xs) if len(xs) > 1 else 0.0)
 
 
 def _write(rows, backend_name, cal, dry) -> None:
     label = "dry run, nothing measured" if dry else "measured"
     lines = [f"# Phase 4 IBM run ({label})", "", f"Backend {backend_name}, {date.today()}.",
-             f"Model durations from the backend target (ns): {cal}, t_ff 600.", "",
-             "| benchmark | variant | model ideal | model block | depth | measured per shot |",
-             "|---|---|---|---|---|---|"]
+             f"Model durations from the backend target (ns): {cal}, t_ff 600.",
+             f"{SHOTS} shots per job, {REPEATS} jobs per circuit. Measured time per shot is the",
+             "execution-span total over the shots, so it includes the repetition delay,",
+             "which is the same for every circuit.", ""]
+    probe = [(r["k"], _mean_sd(r["times"])) for r in rows if r["benchmark"] == "branch_probe"]
+    pts = [(k, m[0]) for k, m in probe if m]
+    lines += ["## Branch-cost probe", "", "| if_else blocks | per shot (us), mean +- sd |", "|---|---|"]
+    lines += [f"| {k} | {m[0] / 1000:.2f} +- {m[1] / 1000:.2f} |" if m else f"| {k} | - |" for k, m in probe]
+    if len(pts) >= 2:
+        n = len(pts)
+        mx, my = sum(k for k, _ in pts) / n, sum(v for _, v in pts) / n
+        slope = sum((k - mx) * (v - my) for k, v in pts) / sum((k - mx) ** 2 for k, _ in pts)
+        lines += ["", f"Least-squares slope: {slope / 1000:.2f} us per if_else block."]
+    lines += ["", "## Benchmark variants", "",
+              "| benchmark | variant | model ideal (ns) | model block (ns) | measured per shot (us) | note |",
+              "|---|---|---|---|---|---|"]
     for r in rows:
-        m = f"{r['measured_ns_per_shot']:.0f}" if r["measured_ns_per_shot"] else "-"
+        if r["benchmark"] == "branch_probe":
+            continue
+        m = _mean_sd(r["times"])
+        ms = f"{m[0] / 1000:.2f} +- {m[1] / 1000:.2f}" if m else "-"
         lines.append(f"| {r['benchmark']} | {r['variant']} | {r['ideal_ns']:.0f} | "
-                     f"{r['block_ns']:.0f} | {r['depth']} | {m} |")
+                     f"{r['block_ns']:.0f} | {ms} | {r['why'] or ''} |")
     if not dry:
-        lines += ["", "## Rank correlation (Spearman, per benchmark)", ""]
-        for b in sorted({r["benchmark"] for r in rows}):
-            rs = [r for r in rows if r["benchmark"] == b and r["measured_ns_per_shot"]]
+        lines += ["", "## Rank correlation (Spearman, per benchmark, measured means)", ""]
+        for b in sorted({r["benchmark"] for r in rows} - {"branch_probe"}):
+            rs = [r for r in rows if r["benchmark"] == b and r["times"]]
             if len(rs) >= 3:
-                meas = [r["measured_ns_per_shot"] for r in rs]
+                meas = [st.mean(r["times"]) for r in rs]
                 lines.append(f"- {b}: ideal {spearman([r['ideal_ns'] for r in rs], meas):+.2f}, "
-                             f"block {spearman([r['block_ns'] for r in rs], meas):+.2f}")
+                             f"block {spearman([r['block_ns'] for r in rs], meas):+.2f} (n = {len(rs)})")
+            else:
+                lines.append(f"- {b}: {len(rs)} variants measured, too few for a rank correlation")
     name = "phase4_ibm_dryrun.md" if dry else "phase4_ibm.md"
     (RESULTS / name).write_text("\n".join(lines) + "\n")
     (RESULTS / name.replace(".md", ".json")).write_text(json.dumps(rows, indent=1))

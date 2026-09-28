@@ -97,15 +97,43 @@ def _condition_for(qc: QuantumCircuit, e: dict, c: ClassicalRegister, negate: bo
     if lits is not None and len({b for b, _ in lits}) == len(lits):
         if len(lits) == 1:
             return (c[lits[0][0]], lits[0][1])
-        bits = [c[b] for b, _ in lits]
-        name = "k" + "_".join(str(b) for b, _ in lits)
-        reg = next((r for r in qc.cregs if r.name == name), None)
-        if reg is None:
-            reg = ClassicalRegister(name=name, bits=bits)
-            qc.add_register(reg)
-        return (reg, sum(v << i for i, (_, v) in enumerate(lits)))
+        reg = _register_for(qc, [b for b, _ in lits], c, "k")
+        pos = {bit: i for i, bit in enumerate(reg)}
+        return (reg, sum(v << pos[c[b]] for b, v in lits))
     cond = _cond(e, c)
     return expr.logic_not(cond) if negate else cond
+
+
+def _register_for(qc: QuantumCircuit, bits: list[int], c, prefix: str) -> ClassicalRegister:
+    """A register holding exactly these bits: an existing one if there is one
+    (the no-alias layout makes them up front), else a new register that
+    aliases bits of `c`."""
+    want = {c[b] for b in bits}
+    reg = next((r for r in qc.cregs if set(r) == want), None)
+    if reg is None:
+        reg = ClassicalRegister(name=prefix + "_".join(map(str, bits)), bits=[c[b] for b in bits])
+        qc.add_register(reg)
+    return reg
+
+
+def _condition_sets(block: list, out: set) -> None:
+    """Bit sets read together by a multi-bit condition or a Switch."""
+    for op in block:
+        (kind, a), = op.items()
+        if kind == "If":
+            lits = _literals(a["cond"])
+            if lits is not None and len(lits) > 1:
+                out.add(tuple(sorted(b for b, _ in lits)))
+            _condition_sets(a["then_"], out)
+            _condition_sets(a["else_"], out)
+        elif kind == "Switch":
+            if len(a["bits"]) > 1:
+                out.add(tuple(sorted(a["bits"])))
+            for _, body in a["cases"]:
+                _condition_sets(body, out)
+            _condition_sets(a["default"], out)
+        elif kind == "Loop":
+            _condition_sets(a["body"], out)
 
 
 def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegister,
@@ -129,11 +157,9 @@ def _emit(qc: QuantumCircuit, block: list, q: QuantumRegister, c: ClassicalRegis
         elif kind == "Switch":
             # A register over the switch bits; case value bit i is bits[i].
             bits = a["bits"]
-            name = "s" + "_".join(map(str, bits))
-            reg = next((r for r in qc.cregs if r.name == name), None)
-            if reg is None:
-                reg = ClassicalRegister(name=name, bits=[c[b] for b in bits])
-                qc.add_register(reg)
+            reg = _register_for(qc, bits, c, "s")
+            if list(reg) != [c[b] for b in bits]:
+                raise Unsupported("switch bits are not in register order")
             if switch_as_if:
                 _if_chain(qc, reg, a["cases"], a["default"], q, c)
             else:
@@ -168,13 +194,38 @@ def _if_chain(qc, reg, cases, default, q, c) -> None:
             _if_chain(qc, reg, rest, default, q, c)
 
 
-def to_qiskit(prog: dict, switch_as_if: bool = False) -> QuantumCircuit:
+def to_qiskit(prog: dict, switch_as_if: bool = False, no_alias: bool = False) -> QuantumCircuit:
     """Builds a Qiskit circuit from a `qlin json` tree. With
-    `switch_as_if`, a Switch becomes a nested if/else chain."""
+    `switch_as_if`, a Switch becomes a nested if/else chain.
+
+    With `no_alias`, every bit is in exactly one register: each bit set read
+    by a multi-bit condition gets its own register, and the other bits go in
+    `c`. IBM hardware rejects the default layout, where condition registers
+    alias bits of `c`. Clbit order then differs from the qlin bit order, and
+    `circuit.metadata["qlin_bits"]` gives the qlin bit of each clbit."""
     q = QuantumRegister(prog["n_qubits"], "q")
-    c = ClassicalRegister(max(prog["n_bits"], 1), "c")
-    qc = QuantumCircuit(q, c)
-    _emit(qc, prog["body"], q, c, switch_as_if)
+    if not no_alias:
+        c = ClassicalRegister(max(prog["n_bits"], 1), "c")
+        qc = QuantumCircuit(q, c)
+        _emit(qc, prog["body"], q, c, switch_as_if)
+        return qc
+    sets: set = set()
+    _condition_sets(prog["body"], sets)
+    seen: set = set()
+    for group in sorted(sets):
+        if seen & set(group):
+            raise Unsupported(f"condition bit sets overlap at {sorted(seen & set(group))}")
+        seen |= set(group)
+    rest = [b for b in range(prog["n_bits"]) if b not in seen]
+    regs = ([ClassicalRegister(len(rest), "c")] if rest else []) + [
+        ClassicalRegister(len(g), "r" + "_".join(map(str, g))) for g in sorted(sets)]
+    qc = QuantumCircuit(q, *regs)
+    order = rest + [b for g in sorted(sets) for b in g]
+    bitmap: list = [None] * prog["n_bits"]
+    for clbit, b in zip(qc.clbits, order):
+        bitmap[b] = clbit
+    qc.metadata = {"qlin_bits": order}
+    _emit(qc, prog["body"], q, bitmap, switch_as_if)
     return qc
 
 

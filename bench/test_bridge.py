@@ -60,3 +60,34 @@ def test_switch_as_if_chain_keeps_semantics():
     assert "switch" not in chain and "if " in chain
     ok, worst = same_distribution(dist(text), dist(chain))
     assert ok, worst
+
+
+@pytest.mark.parametrize("rel", ["benchmarks/dynamarq/five_qubit_code.qlin",
+                                 "benchmarks/dynamarq/repetition5_0_noisy.qlin",
+                                 "benchmarks/jeff/teleportation.qlin"])
+def test_no_alias_layout_keeps_semantics(rel: str):
+    """Every clbit is in one register, and the output distribution matches
+    qlin sim after mapping clbits back to qlin bits."""
+    from qlin_qiskit import qlin_text, to_qiskit
+    from run_baselines import dist
+    import json
+    path = ROOT / rel
+    prog = json.loads(qlin("json", str(path)))
+    circ = to_qiskit(prog, no_alias=True)
+    owners = {}
+    for r in circ.cregs:
+        for bit in r:
+            owners[bit] = owners.get(bit, 0) + 1
+    assert all(n == 1 for n in owners.values()) and len(owners) == circ.num_clbits
+    text = from_qiskit(circ)
+    order = circ.metadata["qlin_bits"]
+    got = dist(text)["dist"]
+    mapped = {}
+    for key, p in got.items():
+        bits = ["0"] * len(order)
+        for pos, b in enumerate(order):
+            bits[b] = key[pos]
+        mapped["".join(bits)] = mapped.get("".join(bits), 0.0) + p
+    want = dist(qlin("fmt", str(path)))["dist"]
+    for k in set(want) | set(mapped):
+        assert abs(want.get(k, 0.0) - mapped.get(k, 0.0)) < 1e-9, k

@@ -4,6 +4,9 @@ Run: cargo build --release, then
      uv run --project bench python bench/run_phase4_ibm.py            # submits jobs (30 s cap)
      uv run --project bench python bench/run_phase4_ibm.py --budget 60 # raise the cap
      uv run --project bench python bench/run_phase4_ibm.py --probe     # also rerun the branch probe
+     ... --bench five_qubit --variants source,best_defer              # a subset only
+Before any device job, each transpiled circuit is simulated on Aer and must
+match qlin's output distribution (an offline smoke test).
      uv run --project bench python bench/run_phase4_ibm.py --dry-run  # offline
 
 The model's durations come from the backend target (calibration medians).
@@ -27,7 +30,7 @@ from datetime import date
 
 from qiskit import transpile
 
-from qlin_qiskit import ROOT, from_qiskit, qlin, qlin_text, to_qiskit
+from qlin_qiskit import ROOT, Unsupported, from_qiskit, qlin, qlin_text, to_qiskit
 
 RESULTS = ROOT / "results"
 BENCHES = ["benchmarks/jeff/teleportation.qlin", "benchmarks/dynamarq/five_qubit_code.qlin",
@@ -116,7 +119,29 @@ def spearman(a: list[float], b: list[float]) -> float:
     return 1 - 6 * sum((x - y) ** 2 for x, y in zip(ra, rb)) / (n * (n * n - 1))
 
 
-def main(dry: bool, probe: bool = False) -> int:
+def aer_matches(circ, qtext: str) -> str | None:
+    """Offline smoke test: the transpiled circuit on Aer (noiseless) gives
+    the qlin output distribution (bench/dist_check.py). Returns a reason on
+    mismatch."""
+    from qiskit_aer import AerSimulator
+    from dist_check import compare
+    from run_baselines import dist
+    shots = 4000
+    counts = AerSimulator().run(circ, shots=shots, seed_simulator=7).result().get_counts()
+    order = circ.metadata["qlin_bits"]
+    mapped: dict[str, int] = {}
+    for key, n in counts.items():
+        flat = key.replace(" ", "")[::-1]  # clbit 0 first
+        bits = ["0"] * len(order)
+        for pos, b in enumerate(order):
+            bits[b] = flat[pos]
+        mapped["".join(bits)] = mapped.get("".join(bits), 0) + n
+    why = compare(dist(qtext)["dist"], mapped)
+    return f"Aer smoke test failed: {why}" if why else None
+
+
+def main(dry: bool, probe: bool = False, bench: str | None = None,
+         only: set[str] | None = None, out: str | None = None) -> int:
     RESULTS.mkdir(exist_ok=True)
     if dry:
         from qiskit_ibm_runtime.fake_provider import FakeKingston
@@ -154,20 +179,25 @@ def main(dry: bool, probe: bool = False) -> int:
         used = service.usage().get("usage_consumed_seconds", 0) - start_consumed
         return used < BUDGET_S
 
-    def measure(circ) -> tuple[list[float], list[str], str | None]:
+    smoked: set[str] = set()
+
+    def measure(circ, bench_path: str) -> tuple[list[float], list[str], str | None]:
         """Per-shot ns for each repeat, the job ids, and a failure reason.
-        A SMOKE_SHOTS job runs first. The repeats run only if it succeeds."""
+        The first variant of each benchmark runs a SMOKE_SHOTS job first.
+        The repeats run only if it succeeds."""
         from qiskit_ibm_runtime import SamplerV2
         from qiskit_ibm_runtime.exceptions import RuntimeJobFailureError
         times, ids = [], []
         if not budget_left():
             return times, ids, "budget reached"
-        smoke = SamplerV2(mode=backend).run([circ], shots=SMOKE_SHOTS)
-        ids.append(smoke.job_id())
-        try:
-            smoke.result()
-        except RuntimeJobFailureError as e:
-            return times, ids, "smoke job failed: " + str(e).splitlines()[0][:180]
+        if bench_path not in smoked:
+            smoke = SamplerV2(mode=backend).run([circ], shots=SMOKE_SHOTS)
+            ids.append(smoke.job_id())
+            try:
+                smoke.result()
+            except RuntimeJobFailureError as e:
+                return times, ids, "smoke job failed: " + str(e).splitlines()[0][:180]
+            smoked.add(bench_path)
         for _ in range(REPEATS):
             if not budget_left():
                 return times, ids, "budget reached"
@@ -182,7 +212,7 @@ def main(dry: bool, probe: bool = False) -> int:
         return times, ids, None
 
     def save() -> None:
-        _write(rows, backend.name, cal, dry)
+        _write(rows, backend.name, cal, dry, out)
 
     # The branch-cost probe is opt-in (--probe): it was measured on
     # 2026-09-27 and costs device time on every run.
@@ -191,16 +221,26 @@ def main(dry: bool, probe: bool = False) -> int:
         row = {"benchmark": "branch_probe", "variant": f"k={k}", "k": k, "ideal_ns": None,
                "block_ns": None, "depth": circ.depth(), "times": [], "jobs": [], "why": None}
         if not dry:
-            row["times"], row["jobs"], row["why"] = measure(circ)
+            row["times"], row["jobs"], row["why"] = measure(circ, "branch_probe")
         rows.append(row)
         save()
         print("probe", k, row["times"], row["why"], flush=True)
 
-    for path in BENCHES:
+    for path in [b for b in BENCHES if bench is None or bench in b]:
         failed = None
         for name, qtext in variants(str(ROOT / path), flags).items():
+            if only is not None and name not in only:
+                continue
             # The circuit the device runs, back in qlin form for the model.
-            circ0 = to_qiskit(json.loads(qlin_text(qtext, "json")), switch_as_if=True)
+            try:
+                circ0 = to_qiskit(json.loads(qlin_text(qtext, "json")), switch_as_if=True,
+                                  no_alias=True)
+            except Unsupported as e:
+                rows.append({"benchmark": path, "variant": name, "ideal_ns": float("nan"),
+                             "block_ns": float("nan"), "depth": None, "times": [], "jobs": [],
+                             "why": f"bridge: {e}"})
+                save()
+                continue
             text = from_qiskit(circ0)
             ideal = json.loads(qlin_text(text, "lat", *flags))["mean"]
             block = json.loads(qlin_text(text, "lat", *flags, "--model", "block"))["mean"]
@@ -210,9 +250,12 @@ def main(dry: bool, probe: bool = False) -> int:
                 row["why"] = f"skipped: {failed}"
             if row["why"] is None:
                 circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
+                circ.metadata = circ0.metadata
                 row["depth"] = circ.depth()
+                row["why"] = aer_matches(circ, qtext)
+            if row["why"] is None:
                 if not dry:
-                    row["times"], row["jobs"], row["why"] = measure(circ)
+                    row["times"], row["jobs"], row["why"] = measure(circ, path)
                     if row["why"] and row["why"].startswith("smoke"):
                         # One failure class per benchmark: do not repeat it on siblings.
                         failed = f"{name} failed the smoke job"
@@ -228,7 +271,7 @@ def _mean_sd(xs: list[float]) -> tuple[float, float] | None:
     return st.mean(xs), (st.stdev(xs) if len(xs) > 1 else 0.0)
 
 
-def _write(rows, backend_name, cal, dry) -> None:
+def _write(rows, backend_name, cal, dry, out: str | None = None) -> None:
     label = "dry run, nothing measured" if dry else "measured"
     lines = [f"# Phase 4 IBM run ({label})", "", f"Backend {backend_name}, {date.today()}.",
              f"Model durations from the backend target (ns): {cal}, t_ff 600.",
@@ -264,7 +307,7 @@ def _write(rows, backend_name, cal, dry) -> None:
                              f"block {spearman([r['block_ns'] for r in rs], meas):+.2f} (n = {len(rs)})")
             else:
                 lines.append(f"- {b}: {len(rs)} variants measured, too few for a rank correlation")
-    name = "phase4_ibm_dryrun.md" if dry else "phase4_ibm.md"
+    name = "phase4_ibm_dryrun.md" if dry else f"{out or 'phase4_ibm'}.md"
     (RESULTS / name).write_text("\n".join(lines) + "\n")
     (RESULTS / name.replace(".md", ".json")).write_text(json.dumps(rows, indent=1))
 
@@ -272,4 +315,7 @@ def _write(rows, backend_name, cal, dry) -> None:
 if __name__ == "__main__":
     if "--budget" in sys.argv:
         BUDGET_S = int(sys.argv[sys.argv.index("--budget") + 1])
-    sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv))
+    arg = lambda flag: sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else None
+    only = set(arg("--variants").split(",")) if arg("--variants") else None
+    sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv,
+                  bench=arg("--bench"), only=only, out=arg("--out")))

@@ -14,7 +14,7 @@ HERON_KINGSTON.t_3q = 408 | assumed | ccx as 6 cz (6 x 68 ns); the 1q gates of t
 HERON_KINGSTON.t_meas = 1760 | calibration | FakeKingston measure_2 (mid-circuit measure) median, 1760 ns
 HERON_KINGSTON.t_reset = 2312 | calibration | FakeKingston reset median, 2312 ns
 HERON_KINGSTON.t_ff = 600 | paper | arXiv:2604.03360 (dynamarq), background section: feed-forward latency "approximately 600 ns on IBM hardware"
-HERON_KINGSTON.t_branch = 0 | assumed | no source gives a per-branch controller cost; 0 keeps the Phase 3 decision rule
+HERON_KINGSTON.t_branch = 0 | assumed | kept at 0 for the Phase 3 decision rule. Measured on ibm_kingston 2026-09-27: 3.45 us per if_else block, 95% CI 0.32 to 6.58 us (results/phase4_ibm.md)
 
 Cross-checks and conflicts
   - Final measure on FakeKingston is 2280 ns. 2280 / 68 = 33.5, which

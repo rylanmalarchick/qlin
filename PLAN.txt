@@ -33,7 +33,8 @@ a lower bound on what must stay runtime-decided.
   blocked. bench/run_phase4_ibm.py is ready and dry-run tested.
   Next: merge the phase4 PR. Then Phase 6 (write-up), or Phase 5
   (Lean, stretch), or the IBM run once the account works.
-  Open for Rylan: IBM account, contact Yuan, report the bqcp bug.
+  Open for Rylan: contact Yuan, report the bqcp bug. IBM account works
+  (new Open Plan account, 2026-09-27).
 
 2. OBJECTIVE AND DEFINITION OF DONE
 ===================================
@@ -431,8 +432,12 @@ empirical, heuristic.
   C5  Expected-latency gain on benchmarks.   modeled, HERON_LIKE (an
       assumed cost model, not measured). See the LOG.
   C6  Cost model ranks variants correctly on device X.
-                        empirical, NOT RUN: IBM account blocked. Offline
-                        dry run only.
+                        measured, NOT RESOLVED: on ibm_kingston the
+                        teleportation variants differ by less than the
+                        job noise. The larger programs failed (IBM
+                        error 1500). Branch cost measured instead.
+  C14 IBM per-branch cost (if_else).  measured: 3.45 us, 95% CI 0.32 to
+                        6.58 us, ibm_kingston, 15 jobs
   C7  Defer preserves the output distribution and state (S3 for defer).
       empirical (simulation check, finite inputs and witnesses: sound,
       not complete)
@@ -549,6 +554,13 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-27  IBM run on ibm_kingston (new Open Plan account, 60 s).
+              - Branch cost 3.45 us per if_else (95% CI 0.32-6.58 us).
+              - Teleportation variants not separable (7.7 us noise).
+              - five_qubit_code, repetition5: IBM error 1500, likely the
+                bridge's aliased multi-bit registers (not verified).
+              - The fast path cannot run on IBM: no measure inside a
+                conditional, no nesting, no switch_case.
   2026-09-27  Phase 4 built (branch phase4). G4 PASS on the report. No
               device data. results/phase4.md.
               Findings:

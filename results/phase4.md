@@ -1,7 +1,7 @@
 # Phase 4 results (G4)
 
-Labels: modeled (qlin replay), emulated (Selene), measured (device). No
-number here is measured: the IBM account was blocked on 2026-09-27.
+Labels: modeled (qlin replay), emulated (Selene), measured (device). The
+only measured numbers are in item 3 (ibm_kingston, 2026-09-27).
 
 ## G4 item 1: sourced presets
 
@@ -45,18 +45,20 @@ replace the planned cross-check:
 
 ## G4 item 3: IBM
 
-Not run: login failed ("Cannot log in to the account because it is
-blocked", then "Unable to retrieve instances"). bench/run_phase4_ibm.py is
-ready. Its offline dry run (results/phase4_ibm_dryrun.md) found a device
-constraint: IBM backends have if_else but not switch_case. A Switch
-therefore runs as an if/else chain, one branch per case, which removes the
-single dispatch that the fast-path gain relies on. In the dry run the
-fast path is predicted slower than the source on teleportation (Ideal
-model, 4384 vs 3770 ns).
+Run on ibm_kingston (Open Plan, 60 s of device time, results/phase4_ibm.md).
+- Measured: a branch-cost probe gives 3.45 us per if_else block (95% CI
+  0.32 to 6.58 us). This is the first measured value for t_branch.
+- Not resolvable: the teleportation variants differ by 2 to 7 us in the
+  model, below the 7.7 us job-to-job noise. No ranking claim.
+- Failed: five_qubit_code and repetition5 variants, IBM error 1500,
+  likely from aliased multi-bit registers in the bridge (not verified).
+- Not runnable on IBM: the fast path (a measure inside a conditional,
+  nested conditionals, no switch_case).
 
 ## G4 item 4
 
 The gate passes on this report. The model is not falsified or confirmed
 on a device. What holds: the sourced values, the per-outcome op
-accounting (against Selene), and the defer conclusion across the sourced
-ranges. What is open: every scheduling claim, and t_branch.
+accounting (against Selene), the defer conclusion across the sourced
+ranges, and a measured bound on t_branch. What is open: every
+scheduling ranking on a device.

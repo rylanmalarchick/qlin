@@ -1,0 +1,283 @@
+[
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=0",
+  "k": 0,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 4,
+  "times": [
+   1096980.0,
+   1109080.0000000002,
+   1094780.0
+  ],
+  "jobs": [
+   "dasram5vr3kc73ekgn6g",
+   "dasranrojkfs738pnhp0",
+   "dasrapbojkfs738pnhqg"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=1",
+  "k": 1,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 6,
+  "times": [
+   1113753.0,
+   1118811.9999999998,
+   1088370.9999999998
+  ],
+  "jobs": [
+   "dasrardvr3kc73ekgncg",
+   "dasrat3g95ks73efu98g",
+   "dasraurg95ks73efu9ag"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=2",
+  "k": 2,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 7,
+  "times": [
+   1102961.0000000002,
+   1096354.0000000002,
+   1094891.9999999998
+  ],
+  "jobs": [
+   "dasrb0bojkfs738pni2g",
+   "dasrb23g95ks73efu9eg",
+   "dasrb3tvr3kc73ekgnng"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=4",
+  "k": 4,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 9,
+  "times": [
+   1112847.0,
+   1133659.0,
+   1113434.0
+  ],
+  "jobs": [
+   "dasrb5lvr3kc73ekgnqg",
+   "dasrb7ahcrkc73dt7g1g",
+   "dasrb93ojkfs738pnif0"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "branch_probe",
+  "variant": "k=8",
+  "k": 8,
+  "ideal_ns": null,
+  "block_ns": null,
+  "depth": 13,
+  "times": [
+   1103282.0000000002,
+   1161315.0,
+   1113951.0
+  ],
+  "jobs": [
+   "dasrbajojkfs738pnigg",
+   "dasrbcbg95ks73efu9t0",
+   "dasrbe5vr3kc73ekgo3g"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "source",
+  "ideal_ns": 3105.000000000001,
+  "block_ns": 3608.0,
+  "depth": 18,
+  "times": [
+   1097688.0,
+   1151720.0000000002,
+   1114363.0
+  ],
+  "jobs": [
+   "dasrbfrojkfs738pnimg",
+   "dasrbhbg95ks73efua20",
+   "dasrbj3ojkfs738pniq0"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "best_defer",
+  "ideal_ns": 1716.0,
+  "block_ns": 1716.0,
+  "depth": 23,
+  "times": [
+   1103494.0,
+   1127962.0,
+   1646497.0
+  ],
+  "jobs": [
+   "dasrbkjg95ks73efua50",
+   "dasrbmjg95ks73efua80",
+   "dasrbo2hcrkc73dt7gj0"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 3081.0000000000005,
+  "block_ns": 3576.0,
+  "depth": 15,
+  "times": [
+   1145311.0,
+   1165738.0,
+   1120676.0
+  ],
+  "jobs": [
+   "dasrbptvr3kc73ekgoi0",
+   "dasrbrjojkfs738pnj4g",
+   "dasrbtdvr3kc73ekgom0"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "fast_t1",
+  "ideal_ns": 3624.0,
+  "block_ns": 3624.0,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ },
+ {
+  "benchmark": "benchmarks/jeff/teleportation.qlin",
+  "variant": "sink_fast_t1",
+  "ideal_ns": 3592.0000000000005,
+  "block_ns": 3592.0000000000005,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "source",
+  "ideal_ns": 5763.999999999999,
+  "block_ns": 6853.999999999998,
+  "depth": 182,
+  "times": [],
+  "jobs": [
+   "dasrbv2hcrkc73dt7gs0"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "best_defer",
+  "ideal_ns": 4688.499999999999,
+  "block_ns": 4921.999999999999,
+  "depth": 214,
+  "times": [],
+  "jobs": [
+   "dasrc03g95ks73efuak0"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 5368.999999999999,
+  "block_ns": 6211.999999999999,
+  "depth": 175,
+  "times": [],
+  "jobs": [
+   "dasrc15vr3kc73ekgop0"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "fast_t1",
+  "ideal_ns": 6457.749999999999,
+  "block_ns": 6885.999999999998,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "sink_fast_t1",
+  "ideal_ns": 5912.499999999998,
+  "block_ns": 6211.999999999999,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "source",
+  "ideal_ns": 2024.0,
+  "block_ns": 4004.0,
+  "depth": 59,
+  "times": [],
+  "jobs": [
+   "dasrc22hcrkc73dt7h00"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "best_defer",
+  "ideal_ns": 2024.0,
+  "block_ns": 4004.0,
+  "depth": 59,
+  "times": [],
+  "jobs": [
+   "dasrc33ojkfs738pnjd0"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "sink_only",
+  "ideal_ns": 2024.0,
+  "block_ns": 4004.0,
+  "depth": 59,
+  "times": [],
+  "jobs": [
+   "dasrc45vr3kc73ekgotg"
+  ],
+  "why": "\"Unable to retrieve job result. Error code 1500; Failed to execute program: 'Internal error. -- Try again or contact support. -- https://ibm.biz/error_codes#1500\""
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "fast_t1",
+  "ideal_ns": 4004.0,
+  "block_ns": 4004.0,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/repetition5_0.qlin",
+  "variant": "sink_fast_t1",
+  "ideal_ns": 4004.0,
+  "block_ns": 4004.0,
+  "depth": null,
+  "times": [],
+  "jobs": [],
+  "why": "measure inside a conditional"
+ }
+]

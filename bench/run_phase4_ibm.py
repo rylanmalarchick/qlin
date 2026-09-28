@@ -10,8 +10,9 @@ job with SHOTS shots, so the job's execution spans time that variant alone.
 Measured time per shot includes the repetition delay, the same for every
 variant of a benchmark, so only the ranking and the differences compare.
 IBM backends have if_else but not switch_case, so each Switch runs as a
-nested if/else chain, and the model scores that same chain. The run stops
-before BUDGET_S seconds of device time and never uses a paid plan. The dry
+nested if/else chain, and the model scores that same chain. It runs on
+ibm_kingston, only on an Open Plan instance (checked before any job), and
+stops once IBM's usage counter shows BUDGET_S seconds used by this run. The dry
 run transpiles for FakeKingston and submits nothing.
 """
 
@@ -32,6 +33,8 @@ BENCHES = ["benchmarks/jeff/teleportation.qlin", "benchmarks/dynamarq/five_qubit
 SHOTS = 1000
 BUDGET_S = 300
 MIN_REMAINING_S = 60
+# The device the HERON_KINGSTON preset comes from.
+BACKEND = "ibm_kingston"
 
 
 def calibration(backend) -> dict[str, float]:
@@ -88,13 +91,19 @@ def main(dry: bool) -> int:
                 f"# Phase 4 IBM run\n\nNot run ({date.today()}): login failed: {e}\n")
             print("login failed:", e)
             return 0
+        # Only ever run on the free Open Plan instance.
+        active = service.active_instance()
+        plans = {i["crn"]: i.get("plan") for i in service.instances()}
+        if plans.get(active) != "open":
+            raise SystemExit(f"active instance plan is {plans.get(active)!r}, not 'open'. Not running.")
         usage = service.usage()
         remaining = usage.get("usage_remaining_seconds")
-        if remaining is not None and remaining < MIN_REMAINING_S:
+        if remaining is None or remaining < MIN_REMAINING_S:
             (RESULTS / "phase4_ibm.md").write_text(
                 f"# Phase 4 IBM run\n\nNot run ({date.today()}): {remaining} s of plan time left.\n")
             return 0
-        backend = service.least_busy(operational=True, simulator=False, dynamic_circuits=True)
+        start_consumed = usage.get("usage_consumed_seconds", 0)
+        backend = service.backend(BACKEND)
     cal = calibration(backend)
     flags = model_flags(cal)
     rows, used_s = [], 0.0
@@ -108,13 +117,15 @@ def main(dry: bool) -> int:
             circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
             row = {"benchmark": path, "variant": name, "ideal_ns": ideal, "block_ns": block,
                    "depth": circ.depth(), "measured_ns_per_shot": None}
+            if not dry:
+                # IBM's own usage counter, checked before every job.
+                used_s = service.usage().get("usage_consumed_seconds", 0) - start_consumed
             if not dry and used_s < BUDGET_S:
                 from qiskit_ibm_runtime import SamplerV2
                 job = SamplerV2(mode=backend).run([circ], shots=SHOTS)
                 res = job.result()
                 spans = res.metadata["execution"]["execution_spans"]
                 total = sum((s.stop - s.start).total_seconds() for s in spans)
-                used_s += total
                 row["measured_ns_per_shot"] = total / SHOTS * 1e9
                 row["job"] = job.job_id()
             rows.append(row)

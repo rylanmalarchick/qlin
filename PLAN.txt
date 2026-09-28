@@ -434,8 +434,9 @@ empirical, heuristic.
   C6  Cost model ranks variants correctly on device X.
                         measured, NOT RESOLVED: on ibm_kingston the
                         teleportation variants differ by less than the
-                        job noise. The larger programs failed (IBM
-                        error 1500). Branch cost measured instead.
+                        job noise. five_qubit_code source vs defer:
+                        6 +- 22 us (model: 19 us). Needs about 27 jobs
+                        per variant. Branch cost measured instead.
   C14 IBM per-branch cost (if_else).  measured: 3.45 us, 95% CI 0.32 to
                         6.58 us, ibm_kingston, 15 jobs
   C7  Defer preserves the output distribution and state (S3 for defer).
@@ -554,6 +555,13 @@ LAYOUT
 
 13. LOG (newest first)
 ======================
+  2026-09-28  Error 1500 fixed (bridge no-alias register layout). The
+              distribution check was too loose on broad distributions
+              (per-outcome tolerance above p): replaced by a TV bound plus
+              a support check, and the Selene test was rerun with it (47
+              pass, planted broad error caught). five_qubit_code on
+              ibm_kingston: source vs defer 6 +- 22 us, not resolved.
+              IBM plan time: 80 s of 600 used.
   2026-09-27  IBM run on ibm_kingston (new Open Plan account, 60 s).
               - Branch cost 3.45 us per if_else (95% CI 0.32-6.58 us).
               - Teleportation variants not separable (7.7 us noise).

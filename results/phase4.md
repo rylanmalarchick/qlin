@@ -50,8 +50,11 @@ Run on ibm_kingston (Open Plan, 60 s of device time, results/phase4_ibm.md).
   0.32 to 6.58 us). This is the first measured value for t_branch.
 - Not resolvable: the teleportation variants differ by 2 to 7 us in the
   model, below the 7.7 us job-to-job noise. No ranking claim.
-- Failed: five_qubit_code and repetition5 variants, IBM error 1500,
-  likely from aliased multi-bit registers in the bridge (not verified).
+- Fixed and rerun: error 1500 on five_qubit_code came from aliased
+  multi-bit registers in the bridge. With a no-alias layout the jobs run
+  (results/phase4_ibm_five_qubit.md). Source against best defer differs
+  by 6 +- 22 us per shot: not resolved. The model predicts a 19 us gap at
+  the measured branch cost. About 27 jobs per variant would resolve it.
 - Not runnable on IBM: the fast path (a measure inside a conditional,
   nested conditionals, no switch_case).
 

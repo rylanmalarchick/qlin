@@ -1,0 +1,39 @@
+[
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "source",
+  "ideal_ns": 5763.999999999999,
+  "block_ns": 6853.999999999999,
+  "depth": 182,
+  "times": [
+   1143613.9999999998,
+   1172122.0,
+   1147845.0
+  ],
+  "jobs": [
+   "dat8vpbg95ks73egiaqg",
+   "dat93n2hcrkc73dtrbv0",
+   "dat93p5vr3kc73el4r20",
+   "dat93qtvr3kc73el4r5g"
+  ],
+  "why": null
+ },
+ {
+  "benchmark": "benchmarks/dynamarq/five_qubit_code.qlin",
+  "variant": "best_defer",
+  "ideal_ns": 4688.499999999999,
+  "block_ns": 4921.999999999999,
+  "depth": 214,
+  "times": [
+   1111884.0,
+   1150260.0,
+   1182838.0
+  ],
+  "jobs": [
+   "dat93sihcrkc73dtrc5g",
+   "dat93ubojkfs738qblb0",
+   "dat940dvr3kc73el4rbg"
+  ],
+  "why": null
+ }
+]

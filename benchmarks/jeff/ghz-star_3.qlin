@@ -1,0 +1,8 @@
+qubits 3
+bits 3
+h q0
+cx q0 q1
+cx q0 q2
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2

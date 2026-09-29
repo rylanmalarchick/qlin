@@ -1,0 +1,23 @@
+qubits 5
+bits 5
+x q0
+cx q0 q1
+cx q1 q2
+cx q0 q3
+cx q1 q3
+cx q1 q4
+cx q2 q4
+measure q3 -> c3
+measure q4 -> c4
+if c3 & !c4 {
+  x q0
+}
+if !c3 & c4 {
+  x q2
+}
+if c3 & c4 {
+  x q1
+}
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2

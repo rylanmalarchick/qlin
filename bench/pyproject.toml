@@ -1,0 +1,19 @@
+[project]
+name = "qlin-bench"
+version = "0.1.0"
+description = "Baseline runs and Qiskit bridge for qlin"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "qiskit>=2.0",
+    "qiskit-aer",
+    "qiskit-ibm-runtime",
+    "pytket",
+    "pytket-qiskit",
+    "guppylang",
+    "selene-sim",
+    "dynamarq @ git+https://github.com/sumeetshirgure/dynamarq@cd6306c6749d97d8b4ab4b20ee500c147ec0735a",
+    "pytest",
+]
+
+[tool.uv]
+package = false

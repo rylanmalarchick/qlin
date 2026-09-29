@@ -1,0 +1,44 @@
+qubits 6
+bits 8
+h q0
+cx q0 q1
+cx q1 q2
+ry(0.4510268117962624) q5
+measure q5 -> c5
+if c5 {
+  x q0
+}
+reset q5
+ry(0.4510268117962624) q5
+measure q5 -> c6
+if c6 {
+  x q1
+}
+reset q5
+ry(0.4510268117962624) q5
+measure q5 -> c7
+if c7 {
+  x q2
+}
+reset q5
+cx q0 q3
+cx q1 q3
+cx q1 q4
+cx q2 q4
+measure q3 -> c3
+measure q4 -> c4
+if c3 & !c4 {
+  x q0
+}
+if !c3 & c4 {
+  x q2
+}
+if c3 & c4 {
+  x q1
+}
+cx q1 q2
+cx q0 q1
+h q0
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2

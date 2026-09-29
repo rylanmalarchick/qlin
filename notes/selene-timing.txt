@@ -1,0 +1,41 @@
+Selene timing (Phase 4 spike, 2026-09-27)
+=========================================
+bench/spike_selene.py: teleportation in Guppy, Selene 0.3.2 (selene_sim),
+SimpleRuntime with HERON_KINGSTON durations (rxy 32, rzz 68, rz 0,
+measure 1760, reset 2312 ns), CircuitExtractor event hook, Quest
+simulator, seed 5.
+
+Findings (from the instruction log):
+  1. SimpleRuntime is fully serial. Every native op is its own batch.
+     Each batch starts when the previous one ends, also on other qubits.
+     A shot takes the sum of its executed native op durations.
+  2. No feedforward latency. The op after a measurement result is read
+     starts at the measurement's end time.
+  3. Result reads are explicit in Guppy: measure returns a future, and
+     .read() blocks until the result exists.
+  4. Native lowering: cx is rxy, rzz, rz, rxy, rz (plus rxy on the other
+     qubit). h is rxy, rz. Each qubit allocation is a reset (2312 ns).
+  5. A non-destructive measure (project_z) costs one extra rxy (32 ns
+     here) when the outcome is 1. Found by the accounting check: every
+     first-run miss was 32 ns times the number of 1 outcomes. Selene
+     appears to measure destructively and re-prepare |1>.
+  6. Selene's compiler cancels adjacent gates at compile time: a probe
+     shows `x q0; x q0` compiles to no op at all. A shot's time is
+     therefore not always the sum of per-op times. A tested guess that
+     a reset after a measure drops the re-preparation was wrong: a probe
+     shows measure, reset, rxy, then the explicit reset, all charged.
+  7. The clock runs on across shots.
+  8. Lowering of project_z: MeasureRequest, then Reset, then rxy (only
+     for outcome 1). A shot's time is the difference
+     between its first batch start and its last batch end.
+
+Consequence
+  Selene with SimpleRuntime cannot test a scheduling model: it has no
+  concurrency and no feedforward cost. Its time depends only on which
+  native ops run on an outcome. A comparison would rank a variant by
+  its executed gate count. Defer (more 2q gates) would look worse, and
+  the fast path and the sink (same ops) would look neutral. That says
+  nothing about latency on a device.
+  SoftRZRuntime is in the same package. It was not tested. The Helios
+  runtime of the Helios-1E emulator is not in Selene (it runs on
+  Quantinuum Nexus).

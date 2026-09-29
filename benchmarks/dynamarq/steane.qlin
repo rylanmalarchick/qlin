@@ -1,0 +1,123 @@
+qubits 14
+bits 14
+h q0
+h q1
+h q3
+cx q0 q2
+cx q0 q4
+cx q0 q6
+cx q1 q2
+cx q1 q5
+cx q1 q6
+cx q3 q4
+cx q3 q5
+cx q3 q6
+x q0
+x q1
+x q2
+x q3
+x q4
+x q5
+x q6
+cx q3 q7
+cx q4 q7
+cx q5 q7
+cx q6 q7
+cx q1 q8
+cx q2 q8
+cx q5 q8
+cx q6 q8
+cx q0 q9
+cx q2 q9
+cx q4 q9
+cx q6 q9
+h q10
+cx q10 q3
+cx q10 q4
+cx q10 q5
+cx q10 q6
+h q10
+h q11
+cx q11 q1
+cx q11 q2
+cx q11 q5
+cx q11 q6
+h q11
+h q12
+cx q12 q0
+cx q12 q2
+cx q12 q4
+cx q12 q6
+h q12
+measure q7 -> c8
+measure q8 -> c9
+measure q9 -> c10
+measure q10 -> c11
+measure q11 -> c12
+measure q12 -> c13
+if c8 & !c9 & !c10 {
+  x q3
+}
+if c11 & !c12 & !c13 {
+  z q3
+}
+if !c8 & c9 & !c10 {
+  x q1
+}
+if !c11 & c12 & !c13 {
+  z q1
+}
+if c8 & c9 & !c10 {
+  x q5
+}
+if c11 & c12 & !c13 {
+  z q5
+}
+if !c8 & !c9 & c10 {
+  x q0
+}
+if !c11 & !c12 & c13 {
+  z q0
+}
+if c8 & !c9 & c10 {
+  x q4
+}
+if c11 & !c12 & c13 {
+  z q4
+}
+if !c8 & c9 & c10 {
+  x q2
+}
+if !c11 & c12 & c13 {
+  z q2
+}
+if c8 & c9 & c10 {
+  x q6
+}
+if c11 & c12 & c13 {
+  z q6
+}
+x q0
+x q1
+x q2
+x q3
+x q4
+x q5
+x q6
+h q13
+cz q0 q13
+cz q1 q13
+cz q2 q13
+cz q3 q13
+cz q4 q13
+cz q5 q13
+cz q6 q13
+h q13
+measure q13 -> c0
+measure q0 -> c1
+measure q1 -> c2
+measure q2 -> c3
+measure q3 -> c4
+measure q4 -> c5
+measure q5 -> c6
+measure q6 -> c7

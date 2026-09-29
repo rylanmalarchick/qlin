@@ -1,0 +1,16 @@
+# One round of the 3-qubit bit-flip repetition code with a lookup decoder.
+# Data q0..q2, ancillas q3 (d0 xor d1) and q4 (d1 xor d2).
+qubits 5
+bits 2
+x q0
+cx q0 q1
+cx q1 q2
+cx q0 q3
+cx q1 q3
+cx q1 q4
+cx q2 q4
+measure q3 -> c0
+measure q4 -> c1
+if c0 & !c1 { x q0 }
+if c0 & c1 { x q1 }
+if !c0 & c1 { x q2 }

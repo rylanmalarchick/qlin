@@ -5,6 +5,7 @@ Run: cargo build --release, then
      uv run --project bench python bench/run_phase4_ibm.py --budget 60 # raise the cap
      uv run --project bench python bench/run_phase4_ibm.py --probe     # also rerun the branch probe
      ... --bench five_qubit --variants source,best_defer              # a subset only
+     ... --repeats 27 --interleave   # N jobs per variant, one per variant per round
 Before any device job, each transpiled circuit is simulated on Aer and must
 match qlin's output distribution (an offline smoke test).
      uv run --project bench python bench/run_phase4_ibm.py --dry-run  # offline
@@ -141,7 +142,8 @@ def aer_matches(circ, qtext: str) -> str | None:
 
 
 def main(dry: bool, probe: bool = False, bench: str | None = None,
-         only: set[str] | None = None, out: str | None = None) -> int:
+         only: set[str] | None = None, out: str | None = None,
+         interleave: bool = False) -> int:
     RESULTS.mkdir(exist_ok=True)
     if dry:
         from qiskit_ibm_runtime.fake_provider import FakeKingston
@@ -173,43 +175,80 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
     flags = model_flags(cal)
     rows: list[dict] = []
 
+    spent = {"last": start_consumed, "used": 0}
+
     def budget_left() -> bool:
+        """IBM's counter restarts at 0 when the plan period ends. A drop
+        counts as a reset, and the new value is time spent since then."""
         if dry:
             return False
-        used = service.usage().get("usage_consumed_seconds", 0) - start_consumed
-        return used < BUDGET_S
+        now = service.usage().get("usage_consumed_seconds", 0)
+        spent["used"] += now - spent["last"] if now >= spent["last"] else now
+        spent["last"] = now
+        return spent["used"] < BUDGET_S
 
     smoked: set[str] = set()
 
-    def measure(circ, bench_path: str) -> tuple[list[float], list[str], str | None]:
-        """Per-shot ns for each repeat, the job ids, and a failure reason.
-        The first variant of each benchmark runs a SMOKE_SHOTS job first.
-        The repeats run only if it succeeds."""
+    def one_job(circ, shots: int) -> tuple[float | None, str, str | None]:
+        """Per-shot ns from the execution spans, the job id, and a failure reason."""
         from qiskit_ibm_runtime import SamplerV2
         from qiskit_ibm_runtime.exceptions import RuntimeJobFailureError
-        times, ids = [], []
+        job = SamplerV2(mode=backend).run([circ], shots=shots)
+        try:
+            res = job.result()
+        except RuntimeJobFailureError as e:
+            return None, job.job_id(), str(e).splitlines()[0][:200]
+        spans = res.metadata["execution"]["execution_spans"]
+        return sum((sp.stop - sp.start).total_seconds() for sp in spans) / shots * 1e9, job.job_id(), None
+
+    def smoke(circ, bench_path: str, row: dict) -> str | None:
+        """The first circuit of each benchmark runs a SMOKE_SHOTS job first."""
+        if bench_path in smoked:
+            return None
         if not budget_left():
-            return times, ids, "budget reached"
-        if bench_path not in smoked:
-            smoke = SamplerV2(mode=backend).run([circ], shots=SMOKE_SHOTS)
-            ids.append(smoke.job_id())
-            try:
-                smoke.result()
-            except RuntimeJobFailureError as e:
-                return times, ids, "smoke job failed: " + str(e).splitlines()[0][:180]
-            smoked.add(bench_path)
-        for _ in range(REPEATS):
+            return "budget reached"
+        _, jid, why = one_job(circ, SMOKE_SHOTS)
+        row["jobs"].append(jid)
+        if why:
+            return "smoke job failed: " + why[:180]
+        smoked.add(bench_path)
+        return None
+
+    def measure(circ, bench_path: str, row: dict) -> str | None:
+        """Runs the smoke job if needed, then REPEATS jobs into row. Returns a failure reason."""
+        why = smoke(circ, bench_path, row)
+        for _ in range(REPEATS) if why is None else []:
             if not budget_left():
-                return times, ids, "budget reached"
-            job = SamplerV2(mode=backend).run([circ], shots=SHOTS)
-            ids.append(job.job_id())
-            try:
-                res = job.result()
-            except RuntimeJobFailureError as e:
-                return times, ids, str(e).splitlines()[0][:200]
-            spans = res.metadata["execution"]["execution_spans"]
-            times.append(sum((sp.stop - sp.start).total_seconds() for sp in spans) / SHOTS * 1e9)
-        return times, ids, None
+                return "budget reached"
+            t, jid, why = one_job(circ, SHOTS)
+            row["jobs"].append(jid)
+            if why:
+                return why
+            row["times"].append(t)
+        return why
+
+    def measure_interleaved(pending: list[tuple[dict, object]], bench_path: str) -> None:
+        """REPEATS rounds, one job per circuit per round, so device drift
+        affects every circuit alike."""
+        live = []
+        for row, circ in pending:
+            row["why"] = smoke(circ, bench_path, row)
+            if row["why"] is None:
+                live.append((row, circ))
+        for _ in range(REPEATS):
+            for row, circ in live:
+                if row["why"] is not None:
+                    continue
+                if not budget_left():
+                    row["why"] = "budget reached"
+                    continue
+                t, jid, why = one_job(circ, SHOTS)
+                row["jobs"].append(jid)
+                row["why"] = why
+                if why is None:
+                    row["times"].append(t)
+            save()
+            print("round", [len(r["times"]) for r, _ in live], flush=True)
 
     def save() -> None:
         _write(rows, backend.name, cal, dry, out)
@@ -221,13 +260,14 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
         row = {"benchmark": "branch_probe", "variant": f"k={k}", "k": k, "ideal_ns": None,
                "block_ns": None, "depth": circ.depth(), "times": [], "jobs": [], "why": None}
         if not dry:
-            row["times"], row["jobs"], row["why"] = measure(circ, "branch_probe")
+            row["why"] = measure(circ, "branch_probe", row)
         rows.append(row)
         save()
         print("probe", k, row["times"], row["why"], flush=True)
 
     for path in [b for b in BENCHES if bench is None or bench in b]:
         failed = None
+        pending: list[tuple[dict, object]] = []
         for name, qtext in variants(str(ROOT / path), flags).items():
             if only is not None and name not in only:
                 continue
@@ -253,15 +293,18 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
                 circ.metadata = circ0.metadata
                 row["depth"] = circ.depth()
                 row["why"] = aer_matches(circ, qtext)
-            if row["why"] is None:
-                if not dry:
-                    row["times"], row["jobs"], row["why"] = measure(circ, path)
-                    if row["why"] and row["why"].startswith("smoke"):
-                        # One failure class per benchmark: do not repeat it on siblings.
-                        failed = f"{name} failed the smoke job"
+            if row["why"] is None and not dry and interleave:
+                pending.append((row, circ))
+            elif row["why"] is None and not dry:
+                row["why"] = measure(circ, path, row)
+                if row["why"] and row["why"].startswith("smoke"):
+                    # One failure class per benchmark: do not repeat it on siblings.
+                    failed = f"{name} failed the smoke job"
             rows.append(row)
             save()
             print(path, name, ideal, block, row["times"], row["why"], flush=True)
+        if pending:
+            measure_interleaved(pending, path)
     return 0
 
 
@@ -275,7 +318,7 @@ def _write(rows, backend_name, cal, dry, out: str | None = None) -> None:
     label = "dry run, nothing measured" if dry else "measured"
     lines = [f"# Phase 4 IBM run ({label})", "", f"Backend {backend_name}, {date.today()}.",
              f"Model durations from the backend target (ns): {cal}, t_ff 600.",
-             f"{SHOTS} shots per job, {REPEATS} jobs per circuit. Measured time per shot is the",
+             f"{SHOTS} shots per job, up to {REPEATS} jobs per circuit. Measured time per shot is the",
              "execution-span total over the shots, so it includes the repetition delay,",
              "which is the same for every circuit.", ""]
     probe = [(r["k"], _mean_sd(r["times"])) for r in rows if r["benchmark"] == "branch_probe"]
@@ -315,7 +358,10 @@ def _write(rows, backend_name, cal, dry, out: str | None = None) -> None:
 if __name__ == "__main__":
     if "--budget" in sys.argv:
         BUDGET_S = int(sys.argv[sys.argv.index("--budget") + 1])
+    if "--repeats" in sys.argv:
+        REPEATS = int(sys.argv[sys.argv.index("--repeats") + 1])
     arg = lambda flag: sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else None
     only = set(arg("--variants").split(",")) if arg("--variants") else None
     sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv,
-                  bench=arg("--bench"), only=only, out=arg("--out")))
+                  bench=arg("--bench"), only=only, out=arg("--out"),
+                  interleave="--interleave" in sys.argv))

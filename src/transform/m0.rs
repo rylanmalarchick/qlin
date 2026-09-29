@@ -6,8 +6,10 @@
 //! normal form. The certifier compares the normal form against every
 //! prefix choice.
 
+use std::collections::BTreeSet;
+
 use crate::analysis::core::{fold, match_arms, writes, Known};
-use crate::ir::{BitExpr, Block, Op, Program};
+use crate::ir::{Bit, BitExpr, Block, Op, Program};
 
 /// Applies every hoist and merge.
 pub fn normal_form(prog: &Program) -> Program {
@@ -22,7 +24,7 @@ pub fn move_counts(prog: &Program) -> Vec<(usize, usize)> {
     for op in &prog.body {
         if let Op::If { cond, then_, else_ } = op {
             if fold(cond, &known).is_none() {
-                let m = match_arms(cond, then_, else_);
+                let m = match_arms(cond, then_, else_, &BTreeSet::new());
                 out.push((m.hoisted.len(), m.merged.len()));
             }
         }
@@ -36,7 +38,12 @@ pub fn move_counts(prog: &Program) -> Vec<(usize, usize)> {
 pub fn apply_prefixes(prog: &Program, choose: &dyn Fn(usize) -> (usize, usize)) -> Program {
     let mut known: Known = vec![Some(false); prog.n_bits as usize];
     let mut k = 0;
-    let body = block(&prog.body, &mut known, Some((choose, &mut k)));
+    let body = block(
+        &prog.body,
+        &mut known,
+        &BTreeSet::new(),
+        Some((choose, &mut k)),
+    );
     Program {
         n_qubits: prog.n_qubits,
         n_bits: prog.n_bits,
@@ -52,13 +59,14 @@ fn forget_op(known: &mut Known, op: &Op) {
 
 type Top<'a, 'k> = Option<(&'a dyn Fn(usize) -> (usize, usize), &'k mut usize)>;
 
-fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
+/// `enc`: bits read by the conditions around `ops` (see `match_arms`).
+fn block(ops: &[Op], known: &mut Known, enc: &BTreeSet<Bit>, mut top: Top<'_, '_>) -> Block {
     let mut out = Block::new();
     for op in ops {
         match op {
             Op::If { cond, then_, else_ } => match fold(cond, known) {
-                Some(true) => out.extend(block(then_, known, None)),
-                Some(false) => out.extend(block(else_, known, None)),
+                Some(true) => out.extend(block(then_, known, enc, None)),
+                Some(false) => out.extend(block(else_, known, enc, None)),
                 None => {
                     let (h, m) = match top.as_mut() {
                         Some((choose, k)) => {
@@ -68,7 +76,7 @@ fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
                         }
                         None => (usize::MAX, usize::MAX),
                     };
-                    dynamic_if(cond, then_, else_, h, m, known, &mut out);
+                    dynamic_if(cond, then_, else_, (h, m), known, enc, &mut out);
                     for b in writes(&[then_, else_]) {
                         known[b.0 as usize] = None;
                     }
@@ -83,7 +91,9 @@ fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
                 for b in writes(&[body]) {
                     inner[b.0 as usize] = None;
                 }
-                let body = block(body, &mut inner, None);
+                let mut e = enc.clone();
+                e.extend(until.bits());
+                let body = block(body, &mut inner, &e, None);
                 out.push(Op::Loop {
                     body,
                     until: until.clone(),
@@ -101,19 +111,21 @@ fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
                     let (_, live) = Op::switch_arm(bits, cases, default, &|b: crate::ir::Bit| {
                         k[b.0 as usize].expect("checked known")
                     });
-                    out.extend(block(live, known, None));
+                    out.extend(block(live, known, enc, None));
                 } else {
                     let mut entry = known.clone();
                     for b in writes(&op.arms()) {
                         entry[b.0 as usize] = None;
                     }
+                    let mut e = enc.clone();
+                    e.extend(bits.iter().copied());
                     out.push(Op::Switch {
                         bits: bits.clone(),
                         cases: cases
                             .iter()
-                            .map(|(v, b)| (v.clone(), block(b, &mut entry.clone(), None)))
+                            .map(|(v, b)| (v.clone(), block(b, &mut entry.clone(), &e, None)))
                             .collect(),
-                        default: block(default, &mut entry.clone(), None),
+                        default: block(default, &mut entry.clone(), &e, None),
                     });
                     forget_op(known, op);
                 }
@@ -127,17 +139,18 @@ fn block(ops: &[Op], known: &mut Known, mut top: Top<'_, '_>) -> Block {
     out
 }
 
-/// Normalizes one dynamic If with the first `h` hoists and `m` merges.
+/// Normalizes one dynamic If with the first `h` hoists and `m` merges,
+/// where `(h, m) = moves`.
 fn dynamic_if(
     cond: &BitExpr,
     then_: &Block,
     else_: &Block,
-    h: usize,
-    m: usize,
+    (h, m): (usize, usize),
     known: &Known,
+    enc: &BTreeSet<Bit>,
     out: &mut Block,
 ) {
-    let matches = match_arms(cond, then_, else_);
+    let matches = match_arms(cond, then_, else_, enc);
     let hoisted = &matches.hoisted[..h.min(matches.hoisted.len())];
     let merged = &matches.merged[..m.min(matches.merged.len())];
     let moved_a: Vec<usize> = hoisted.iter().chain(merged).map(|p| p.0).collect();
@@ -150,9 +163,12 @@ fn dynamic_if(
         out.extend(block(
             std::slice::from_ref(&then_[i]),
             &mut entry.clone(),
+            enc,
             None,
         ));
     }
+    let mut inner = enc.clone();
+    inner.extend(cond.bits());
     let keep = |arm: &Block, moved: &[usize]| -> Block {
         let rest: Block = arm
             .iter()
@@ -160,7 +176,7 @@ fn dynamic_if(
             .filter(|(i, _)| !moved.contains(i))
             .map(|(_, o)| o.clone())
             .collect();
-        block(&rest, &mut entry.clone(), None)
+        block(&rest, &mut entry.clone(), &inner, None)
     };
     let (a, b) = (keep(then_, &moved_a), keep(else_, &moved_b));
     if !a.is_empty() || !b.is_empty() {
@@ -174,6 +190,7 @@ fn dynamic_if(
         out.extend(block(
             std::slice::from_ref(&then_[i]),
             &mut entry.clone(),
+            enc,
             None,
         ));
     }

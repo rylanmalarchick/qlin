@@ -9,7 +9,11 @@
 //! 3. Else hoist the common prefix and merge the common suffix of A and B.
 //!    Ops match by structural equality. An op may move past other ops in its
 //!    arm only when their footprints are disjoint (no shared qubit, no bit
-//!    conflict). A hoisted op may not write a bit that `c` reads.
+//!    conflict). A hoisted op may not write a bit that `c` or any
+//!    enclosing condition reads, and a merged op may not move past an op
+//!    that writes an enclosing condition bit. (An op in a branch waits
+//!    for the latest measurement of each enclosing condition bit, so
+//!    either move can add latency: notes/c1-counterexample.)
 //! 4. Matched ops are movable. Every leaf in an unmatched op is core.
 //!
 //! For `Loop`, the first iteration is unconditional (unroll peels it). Every
@@ -140,10 +144,15 @@ fn front_candidates(rem: &[usize], fps: &[Footprint]) -> Vec<usize> {
 }
 
 /// Indices in `rem` whose op may move to the back of `rem`, last first.
-fn back_candidates(rem: &[usize], fps: &[Footprint]) -> Vec<usize> {
+/// The ops it moves past write no bit of `enclosing` (see `match_arms`).
+fn back_candidates(rem: &[usize], fps: &[Footprint], enclosing: &BTreeSet<Bit>) -> Vec<usize> {
     (0..rem.len())
         .rev()
-        .filter(|&k| rem[k + 1..].iter().all(|&e| fps[rem[k]].disjoint(&fps[e])))
+        .filter(|&k| {
+            rem[k + 1..]
+                .iter()
+                .all(|&e| fps[rem[k]].disjoint(&fps[e]) && fps[e].writes.is_disjoint(enclosing))
+        })
         .collect()
 }
 
@@ -159,8 +168,11 @@ pub struct Matches {
     pub rest_b: Vec<usize>,
 }
 
-/// Matches ops of `a` and `b` by hoist, then merge.
-pub fn match_arms(cond: &BitExpr, a: &Block, b: &Block) -> Matches {
+/// Matches ops of `a` and `b` by hoist, then merge. `enclosing` holds the
+/// bits read by the conditions around the If (Ifs, Switches, and loop
+/// exits). A hoisted op writes none of them and no bit of `cond`. A merged
+/// op moves past no op that writes one of them.
+pub fn match_arms(cond: &BitExpr, a: &Block, b: &Block, enclosing: &BTreeSet<Bit>) -> Matches {
     let fa: Vec<Footprint> = a.iter().map(Op::footprint).collect();
     let fb: Vec<Footprint> = b.iter().map(Op::footprint).collect();
     let cond_bits = cond.bits();
@@ -172,7 +184,10 @@ pub fn match_arms(cond: &BitExpr, a: &Block, b: &Block) -> Matches {
         let cb = front_candidates(&rem_b, &fb);
         let found = front_candidates(&rem_a, &fa)
             .into_iter()
-            .filter(|&ka| fa[rem_a[ka]].writes.is_disjoint(&cond_bits))
+            .filter(|&ka| {
+                let w = &fa[rem_a[ka]].writes;
+                w.is_disjoint(&cond_bits) && w.is_disjoint(enclosing)
+            })
             .find_map(|ka| {
                 cb.iter()
                     .find(|&&kb| a[rem_a[ka]] == b[rem_b[kb]])
@@ -183,12 +198,14 @@ pub fn match_arms(cond: &BitExpr, a: &Block, b: &Block) -> Matches {
     }
 
     for _ in 0..rem_a.len().min(rem_b.len()) {
-        let cb = back_candidates(&rem_b, &fb);
-        let found = back_candidates(&rem_a, &fa).into_iter().find_map(|ka| {
-            cb.iter()
-                .find(|&&kb| a[rem_a[ka]] == b[rem_b[kb]])
-                .map(|&kb| (ka, kb))
-        });
+        let cb = back_candidates(&rem_b, &fb, enclosing);
+        let found = back_candidates(&rem_a, &fa, enclosing)
+            .into_iter()
+            .find_map(|ka| {
+                cb.iter()
+                    .find(|&&kb| a[rem_a[ka]] == b[rem_b[kb]])
+                    .map(|&kb| (ka, kb))
+            });
         let Some((ka, kb)) = found else { break };
         merged.push((rem_a.remove(ka), rem_b.remove(kb)));
     }
@@ -214,9 +231,19 @@ enum Mode {
 #[derive(Default)]
 struct Walker {
     report: CoreReport,
+    /// Bits read by the conditions around the current op.
+    enc: BTreeSet<Bit>,
 }
 
 impl Walker {
+    /// Adds `bits` to the enclosing condition bits. Returns the old set,
+    /// which the caller restores after the arms.
+    fn enter(&mut self, bits: &BTreeSet<Bit>) -> BTreeSet<Bit> {
+        let saved = self.enc.clone();
+        self.enc.extend(bits.iter().copied());
+        saved
+    }
+
     fn block(&mut self, block: &Block, prefix: &[usize], known: &mut Known, mode: Mode) {
         for (i, op) in block.iter().enumerate() {
             let mut p = prefix.to_vec();
@@ -275,8 +302,10 @@ impl Walker {
                         forget(&mut entry, &writes(&[then_, else_]));
                         match mode {
                             Mode::Core(_) => {
+                                let saved = self.enter(&cond.bits());
                                 self.arm(then_, path, 0, &mut entry.clone(), mode);
                                 self.arm(else_, path, 1, &mut entry.clone(), mode);
+                                self.enc = saved;
                             }
                             Mode::Static | Mode::Loop => {
                                 self.dynamic_if(cond, then_, else_, path, &entry, mode)
@@ -314,9 +343,11 @@ impl Walker {
                         Mode::Core(k) => Mode::Core(k),
                         Mode::Static | Mode::Loop => Mode::Core(CoreKind::Branch),
                     };
+                    let saved = self.enter(&bits.iter().copied().collect());
                     for (i, block) in arms.iter().enumerate() {
                         self.arm(block, path, i, &mut entry.clone(), inner);
                     }
+                    self.enc = saved;
                 }
                 forget(known, &writes(&arms));
             }
@@ -332,7 +363,9 @@ impl Walker {
                         Mode::Core(k) => Mode::Core(k),
                         Mode::Static | Mode::Loop => Mode::Loop,
                     };
+                    let saved = self.enter(&until.bits());
                     self.arm(body, path, 0, &mut after.clone(), inner);
+                    self.enc = saved;
                 }
                 forget(known, &w);
             }
@@ -348,9 +381,10 @@ impl Walker {
         entry: &Known,
         mode: Mode,
     ) {
-        let m = match_arms(cond, then_, else_);
+        let m = match_arms(cond, then_, else_, &self.enc);
         let (rest_a, rest_b) = (m.rest_a, m.rest_b);
         let pairs: Vec<(usize, usize)> = m.hoisted.into_iter().chain(m.merged).collect();
+        let saved = self.enter(&cond.bits());
         for i in rest_a {
             self.op(
                 &then_[i],
@@ -367,6 +401,7 @@ impl Walker {
                 Mode::Core(CoreKind::Branch),
             );
         }
+        self.enc = saved;
         for (i, j) in pairs {
             let (pa, pb) = (child(path, 0, i), child(path, 1, j));
             let (n_core, n_dead) = (self.report.core.len(), self.report.dead.len());

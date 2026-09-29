@@ -22,26 +22,29 @@ def Supp (W : Finset Bit) (s : State D) : Prop :=
 
 theorem restrict_add (c : Cond) (s t : State D) :
     restrict c (s + t) = restrict c s + restrict c t := by
-  sorry
+  ext β; unfold restrict; by_cases h : c.eval β <;> simp [h]
 
 theorem restrict_zero (c : Cond) : restrict c (0 : State D) = 0 := by
-  sorry
+  ext β; unfold restrict; by_cases h : c.eval β <;> simp [h]
 
 theorem restrict_comm (c c' : Cond) (s : State D) :
     restrict c (restrict c' s) = restrict c' (restrict c s) := by
-  sorry
+  ext β; unfold restrict; by_cases h : c.eval β <;> by_cases h' : c'.eval β <;> simp [h, h']
 
 /-- A state splits into the branches where `c` holds and the rest. -/
 theorem restrict_split (c : Cond) (s : State D) :
     restrict c s + restrict c.not s = s := by
-  sorry
+  ext β; unfold restrict Cond.not; by_cases h : c.eval β <;> simp [h]
 
 theorem Footprint.Disj.symm {f g : Footprint} (h : f.Disj g) : g.Disj f := by
-  sorry
+  obtain ⟨h1, h2, h3, h4⟩ := h
+  exact ⟨h1.symm, h2.symm, h4.symm, h3.symm⟩
 
 theorem denB_append (I : Interp D) (A B : List Op) (s : State D) :
     denB I (A ++ B) s = denB I B (denB I A s) := by
-  sorry
+  induction A generalizing s with
+  | nil => simp [denB]
+  | cons o os ih => simp [denB, ih]
 
 theorem den_add (I : Interp D) (o : Op) (s t : State D) :
     den I o (s + t) = den I o s + den I o t := by

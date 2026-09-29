@@ -1,0 +1,8 @@
+Wolfram checks (CAS), outside Lean. Each entry: file, date, result.
+Label in the claims ledger: Wolfram-checked.
+
+2026-09-29  notes/wolfram/pauli_table.wl (Wolfram Engine 15.0, MCP evaluator)
+            Pauli table of src/pauli.rs, as stated in lean/Qlin/PauliTable.lean:
+            h s sdg sx xyz cx cz cy swap all True. cy = S_t cx Sdg_t True,
+            sx^2 = x True. Planted wrong tables (h identity, s without the
+            z flip, cx with roles swapped): all False.

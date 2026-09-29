@@ -2,3 +2,6 @@ import Qlin.IR
 import Qlin.Sem
 import Qlin.Structure
 import Qlin.M0
+import Qlin.FastPath
+import Qlin.Sink
+import Qlin.PauliTable

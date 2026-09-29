@@ -88,15 +88,18 @@ private theorem denB_add_aux (I : Interp D) : ∀ (l : List Op) (s t : State D),
 private theorem denCases_add_aux (I : Interp D) (G : Finset Bit) :
     ∀ (cs : List (Assign × List Op)) (dflt : List Op),
     (∀ s t, denB I dflt (s + t) = denB I dflt s + denB I dflt t) →
-    ∀ (s t : State D), denCases I G cs dflt (s + t) = denCases I G cs dflt s + denCases I G cs dflt t
+    ∀ (s t : State D),
+      denCases I G cs dflt (s + t) = denCases I G cs dflt s + denCases I G cs dflt t
   | [], dflt, hd, s, t => by simp only [denCases]; exact hd s t
   | (v, blk) :: cs, dflt, hd, s, t => by
     simp only [denCases, restrict_add, denB_add_aux I blk, denCases_add_aux I G cs dflt hd]
     abel
 end
 
-/-- Hypotheses under which a map `g` commutes with every op whose footprint
-satisfies `P`. -/
+/-- What a map `g` needs to commute with the denotation of every op whose
+footprint satisfies `P`: it is additive, commutes with each leaf and each
+condition that `P` allows, and `P` passes to both parts of a union.
+`den_restrict` uses `g = restrict c`, `den_comm` uses `g = den I o'`. -/
 private structure CommHyp (I : Interp D) (g : State D → State D) (P : Footprint → Prop) :
     Prop where
   hadd : ∀ s t, g (s + t) = g s + g t
@@ -104,6 +107,7 @@ private structure CommHyp (I : Interp D) (g : State D → State D) (P : Footprin
   hcond : ∀ c : Cond, P ⟨∅, c.bits, ∅⟩ → ∀ s, g (restrict c s) = restrict c (g s)
   hunion : ∀ f f', P (f ∪ f') → P f ∧ P f'
 
+/-- `g` commutes with a bounded loop when it commutes with the body and the exit test. -/
 private theorem gen_loop (g : State D → State D) (hadd : ∀ s t, g (s + t) = g s + g t)
     (f : State D → State D) (c : Cond)
     (hf : ∀ s, g (f s) = f (g s)) (hc : ∀ s, g (restrict c s) = restrict c (g s))
@@ -115,6 +119,8 @@ private theorem gen_loop (g : State D → State D) (hadd : ∀ s t, g (s + t) = 
   | succ K ih => intro s; simp only [loopIter]; rw [hadd, hc, hf, ih, hc', hf]
 
 mutual
+/-- Under `CommHyp I g P`, `g` commutes with the denotation of every op whose
+footprint satisfies `P`. -/
 private theorem gen_den {I : Interp D} {g : State D → State D} {P : Footprint → Prop}
     (H : CommHyp I g P) : ∀ (o : Op), P (Op.fp o) → ∀ s, g (den I o s) = den I o (g s)
   | .leaf i f, h, s => by
@@ -137,6 +143,7 @@ private theorem gen_den {I : Interp D} {g : State D → State D} {P : Footprint 
     obtain ⟨hG, hcs⟩ := H.hunion _ _ h1
     simp only [den]
     exact gen_cases H G cs dflt hcs (gen_denB H dflt hd) hG s
+/-- `gen_den` for a block. -/
 private theorem gen_denB {I : Interp D} {g : State D → State D} {P : Footprint → Prop}
     (H : CommHyp I g P) : ∀ (l : List Op), P (Op.fps l) → ∀ s, g (denB I l s) = denB I l (g s)
   | [], _, s => by simp only [denB]
@@ -145,6 +152,7 @@ private theorem gen_denB {I : Interp D} {g : State D → State D} {P : Footprint
     obtain ⟨ho, hos⟩ := H.hunion _ _ h
     simp only [denB]
     rw [gen_denB H os hos, gen_den H o ho]
+/-- `gen_den` for the cases of a switch. -/
 private theorem gen_cases {I : Interp D} {g : State D → State D} {P : Footprint → Prop}
     (H : CommHyp I g P) (G : Finset Bit) : ∀ (cs : List (Assign × List Op)) (dflt : List Op),
     P (Op.fpsCases cs) → (∀ s, g (denB I dflt s) = denB I dflt (g s)) → P ⟨∅, G, ∅⟩ →
@@ -159,8 +167,8 @@ private theorem gen_cases {I : Interp D} {g : State D → State D} {P : Footprin
 end
 
 theorem den_add (I : Interp D) (o : Op) (s t : State D) :
-    den I o (s + t) = den I o s + den I o t := by
-  exact den_add_aux I o s t
+    den I o (s + t) = den I o s + den I o t :=
+  den_add_aux I o s t
 
 theorem den_zero (I : Interp D) (o : Op) : den I o 0 = 0 :=
   (gen_den (g := fun _ => (0 : State D)) (P := fun _ => True)
@@ -168,8 +176,8 @@ theorem den_zero (I : Interp D) (o : Op) : den I o 0 = 0 :=
       fun c _ _ => (restrict_zero c).symm, fun _ _ _ => ⟨trivial, trivial⟩⟩ o trivial 0).symm
 
 theorem denB_add (I : Interp D) (l : List Op) (s t : State D) :
-    denB I l (s + t) = denB I l s + denB I l t := by
-  exact denB_add_aux I l s t
+    denB I l (s + t) = denB I l s + denB I l t :=
+  denB_add_aux I l s t
 
 theorem denB_zero (I : Interp D) (l : List Op) : denB I l 0 = 0 :=
   (gen_denB (g := fun _ => (0 : State D)) (P := fun _ => True)

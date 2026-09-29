@@ -164,6 +164,6 @@ theorem merge_latency (C : Cost) (R : Record) (c : Cond) (x : Op) (A sA B sB : L
 /-- No later, pointwise, gives no larger makespan. -/
 theorem makespan_le (Q : Finset Qubit) (a b : TState) (h : a.Le b) :
     makespan Q a ≤ makespan Q b := by
-  sorry
+  exact Finset.sup_mono_fun fun q _ => h.2.2.2.1 q
 
 end Qlin

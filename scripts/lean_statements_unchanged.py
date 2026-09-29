@@ -26,6 +26,8 @@ def chunks(text: str) -> list[str]:
     for s in starts:
         e = min(x for x in stops if x > s)
         body = text[s:e].rstrip()
+        # A docstring at the end belongs to the next declaration.
+        body = re.sub(r"\n/--(?:(?!-/).)*-/\Z", "", body, flags=re.S).rstrip()
         kind = re.match(KEYWORDS, body).group(1)
         if kind in ("theorem", "lemma"):
             i = body.find(":= by")

@@ -6,3 +6,4 @@ import Qlin.FastPath
 import Qlin.Sink
 import Qlin.PauliTable
 import Qlin.Latency
+import Qlin.Negative

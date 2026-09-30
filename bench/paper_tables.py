@@ -74,7 +74,8 @@ def defer_table() -> tuple[str, dict]:
             "violations": sum(int(r["bound_violations"] or 0) for r in ok),
             "checked": sum(int(r["leaves_checked"] or 0) for r in ok if float(r["tff"]) == 600),
             "unchecked": sum(int(r["leaves_unchecked"] or 0) for r in ok if float(r["tff"]) == 600),
-            "defer_wins_600": sum(float(r["best"]) < float(r["m0"]) for r in sel)}
+            "defer_wins_600": sum(float(r["best"]) < float(r["m0"]) for r in sel),
+            "cand_rows_600": len(sel)}
     tab = (r"\begin{tabular}{lrrrrrrrr}" "\n" r"\toprule" "\n"
            r"benchmark & cand. & source & M0 & best & floor & deferred & +2q & +q \\" "\n"
            r"\midrule" "\n" + "\n".join(lines) + "\n" r"\bottomrule" "\n" r"\end{tabular}" "\n")

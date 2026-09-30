@@ -75,6 +75,26 @@ Phase 4: `bench/run_phase4_sensitivity.py` (cost-grid sensitivity),
 `bench/qlin_guppy.py` writes a Guppy program for Selene. The cost-model
 sources are in `notes/cost-sources.txt`.
 
+## Lean proofs
+
+`lean/` holds a Lean 4 model of the control structure and proofs that the
+rewrite rules are sound: the M0 moves (fold, hoist, merge, unroll), the
+fast-path step, the Pauli sink and its conjugation table, and that a
+hoist or merge step never increases replay latency (claim C1). Leaves are
+opaque. Their semantics is any additive map that satisfies two axioms,
+listed in `lean/Qlin/Sem.lean`. `lean/Qlin/Negative.lean` refutes each
+rule with one side condition dropped.
+
+```
+cd lean
+lake exe cache get          # Mathlib v4.28.0 build cache
+lake build
+../scripts/lean_axioms.sh   # every listed theorem uses only the standard axioms
+```
+
+Wolfram checks outside Lean are in `notes/wolfram/` and
+`notes/wolfram-checks.txt`.
+
 ## The `.qlin` text format
 
 ```

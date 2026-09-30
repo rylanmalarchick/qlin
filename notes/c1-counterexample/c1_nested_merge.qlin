@@ -1,0 +1,9 @@
+qubits 3
+bits 2
+h q0
+measure q0 -> c0
+h q2
+measure q2 -> c1
+if c0 {
+  if c1 { h q1  x q1  measure q0 -> c0 } else { z q1  x q1 }
+}

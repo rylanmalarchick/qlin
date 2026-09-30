@@ -62,6 +62,56 @@ fn mbqc_normal_form_moves_the_shared_measurements_out() {
     equivalent(&p, &n, &inputs(p.n_qubits, 8, 1), LIMIT).unwrap();
 }
 
+/// C1 counterexample (notes/c1-counterexample): hoisting `measure q0 -> c0`
+/// out of the inner If makes `x q1` wait for the new measurement of c0,
+/// which the outer If reads. The hoist must not move an op that writes an
+/// enclosing condition bit. Merging it after the inner If is allowed.
+#[test]
+fn hoist_skips_ops_that_write_an_enclosing_condition_bit() {
+    let p = load(&PathBuf::from(
+        "notes/c1-counterexample/c1_nested_hoist.qlin",
+    ));
+    let n = normal_form(&p);
+    let want = "qubits 3\nbits 2\nh q0\nmeasure q0 -> c0\nh q2\nmeasure q2 -> c1\n\
+                if c0 {\n  if c1 {\n    x q1\n  }\n  measure q0 -> c0\n}\n";
+    assert_eq!(print(&n), want);
+    equivalent(&p, &n, &inputs(p.n_qubits, 8, 1), LIMIT).unwrap();
+    let recs = records(&p, LIMIT).unwrap();
+    let cost = CostModel::HERON_LIKE;
+    let none = BTreeSet::new();
+    let src = expected(&p, &recs, &cost, &Noise::none(), &none).unwrap();
+    let nf = expected(&n, &recs, &cost, &Noise::none(), &none).unwrap();
+    assert!(
+        nf.mean <= src.mean,
+        "normal form {} > source {}",
+        nf.mean,
+        src.mean
+    );
+}
+
+/// The merge mirror of the case above: `x q1` may not move past
+/// `measure q0 -> c0` to the back of the inner If, because it would then
+/// wait for that new measurement of the enclosing bit c0.
+#[test]
+fn merge_skips_past_ops_that_write_an_enclosing_condition_bit() {
+    let p = load(&PathBuf::from(
+        "notes/c1-counterexample/c1_nested_merge.qlin",
+    ));
+    let n = normal_form(&p);
+    assert_eq!(print(&n), print(&p));
+    let recs = records(&p, LIMIT).unwrap();
+    let none = BTreeSet::new();
+    let cost = CostModel::HERON_LIKE;
+    let src = expected(&p, &recs, &cost, &Noise::none(), &none).unwrap();
+    let nf = expected(&n, &recs, &cost, &Noise::none(), &none).unwrap();
+    assert!(
+        nf.mean <= src.mean,
+        "normal form {} > source {}",
+        nf.mean,
+        src.mean
+    );
+}
+
 #[test]
 fn checker_rejects_a_wrong_rewrite() {
     let p = load(&PathBuf::from("benchmarks/hand/teleportation.qlin"));

@@ -1,0 +1,19 @@
+qubits 5
+bits 5
+h q1
+cx q0 q2
+h q3
+cx q3 q4
+cx q4 q1
+cx q2 q3
+h q2
+h q4
+cz q2 q0
+cz q4 q0
+measure q2 -> c2
+measure q4 -> c4
+cx q3 q1
+measure q3 -> c3
+h q1
+measure q0 -> c0
+measure q1 -> c1

@@ -1,0 +1,26 @@
+Wolfram checks (CAS), outside Lean. Each entry: file, date, result.
+Label in the claims ledger: Wolfram-checked.
+
+2026-09-29  notes/wolfram/pauli_table.wl (Wolfram Engine 15.0, MCP evaluator)
+            Pauli table of src/pauli.rs, as stated in lean/Qlin/PauliTable.lean:
+            h s sdg sx xyz cx cz cy swap all True. cy = S_t cx Sdg_t True,
+            sx^2 = x True. Planted wrong tables (h identity, s without the
+            z flip, cx with roles swapped): all False.
+
+2026-09-29  notes/wolfram/defer_instances.wl
+            Defer on teleportation and dynamarq/long_range_cnot3: the source
+            and the `qlin opt` output (defer chosen) give the same cq state
+            exactly, for a symbolic input on q0 (|0> elsewhere): True, True.
+            Planted wrong defer (teleportation, cz q0 q2 -> cx q0 q2): False.
+            These are two instances with one family of inputs, not a proof of
+            the defer rewrite. |M_t| = sum_{k<=t} C(m,k) for m <= 12: True.
+
+2026-09-29  notes/wolfram/ibm_stats.wl
+            Matches the scipy numbers in results/phase4_ibm_five_qubit_n27.md
+            and C14: 27 pairs, mean 166.1 +- 119.1 us, paired t p 0.175,
+            Wilcoxon p 0.857 (scipy 0.859: exact vs normal approximation),
+            median -5.35 us. 25 kept: -2.95 +- 10.44 us, 95% CI -24.5 to 18.6,
+            t vs 0 p 0.78, t vs 19 us p 0.046. Branch slope 3.45 us, 95% CI
+            0.32 to 6.58 (15 points). Wolfram flags the kept differences as
+            not normal (normality test p 0.035), so the t-test p 0.046
+            against 19 us is weaker than stated before.

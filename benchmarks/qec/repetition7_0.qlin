@@ -1,0 +1,314 @@
+qubits 13
+bits 13
+x q0
+cx q0 q1
+cx q1 q2
+cx q2 q3
+cx q3 q4
+cx q4 q5
+cx q5 q6
+cx q0 q7
+cx q1 q7
+cx q1 q8
+cx q2 q8
+cx q2 q9
+cx q3 q9
+cx q3 q10
+cx q4 q10
+cx q4 q11
+cx q5 q11
+cx q5 q12
+cx q6 q12
+measure q7 -> c7
+measure q8 -> c8
+measure q9 -> c9
+measure q10 -> c10
+measure q11 -> c11
+measure q12 -> c12
+if c7 & !c8 & !c9 & !c10 & !c11 & !c12 {
+  x q0
+}
+if !c7 & c8 & !c9 & !c10 & !c11 & !c12 {
+  x q0
+  x q1
+}
+if c7 & c8 & !c9 & !c10 & !c11 & !c12 {
+  x q1
+}
+if !c7 & !c8 & c9 & !c10 & !c11 & !c12 {
+  x q0
+  x q1
+  x q2
+}
+if c7 & !c8 & c9 & !c10 & !c11 & !c12 {
+  x q1
+  x q2
+}
+if !c7 & c8 & c9 & !c10 & !c11 & !c12 {
+  x q2
+}
+if c7 & c8 & c9 & !c10 & !c11 & !c12 {
+  x q0
+  x q2
+}
+if !c7 & !c8 & !c9 & c10 & !c11 & !c12 {
+  x q4
+  x q5
+  x q6
+}
+if c7 & !c8 & !c9 & c10 & !c11 & !c12 {
+  x q1
+  x q2
+  x q3
+}
+if !c7 & c8 & !c9 & c10 & !c11 & !c12 {
+  x q2
+  x q3
+}
+if c7 & c8 & !c9 & c10 & !c11 & !c12 {
+  x q0
+  x q2
+  x q3
+}
+if !c7 & !c8 & c9 & c10 & !c11 & !c12 {
+  x q3
+}
+if c7 & !c8 & c9 & c10 & !c11 & !c12 {
+  x q0
+  x q3
+}
+if !c7 & c8 & c9 & c10 & !c11 & !c12 {
+  x q0
+  x q1
+  x q3
+}
+if c7 & c8 & c9 & c10 & !c11 & !c12 {
+  x q1
+  x q3
+}
+if !c7 & !c8 & !c9 & !c10 & c11 & !c12 {
+  x q5
+  x q6
+}
+if c7 & !c8 & !c9 & !c10 & c11 & !c12 {
+  x q0
+  x q5
+  x q6
+}
+if !c7 & c8 & !c9 & !c10 & c11 & !c12 {
+  x q2
+  x q3
+  x q4
+}
+if c7 & c8 & !c9 & !c10 & c11 & !c12 {
+  x q1
+  x q5
+  x q6
+}
+if !c7 & !c8 & c9 & !c10 & c11 & !c12 {
+  x q3
+  x q4
+}
+if c7 & !c8 & c9 & !c10 & c11 & !c12 {
+  x q0
+  x q3
+  x q4
+}
+if !c7 & c8 & c9 & !c10 & c11 & !c12 {
+  x q2
+  x q5
+  x q6
+}
+if c7 & c8 & c9 & !c10 & c11 & !c12 {
+  x q1
+  x q3
+  x q4
+}
+if !c7 & !c8 & !c9 & c10 & c11 & !c12 {
+  x q4
+}
+if c7 & !c8 & !c9 & c10 & c11 & !c12 {
+  x q0
+  x q4
+}
+if !c7 & c8 & !c9 & c10 & c11 & !c12 {
+  x q0
+  x q1
+  x q4
+}
+if c7 & c8 & !c9 & c10 & c11 & !c12 {
+  x q1
+  x q4
+}
+if !c7 & !c8 & c9 & c10 & c11 & !c12 {
+  x q3
+  x q5
+  x q6
+}
+if c7 & !c8 & c9 & c10 & c11 & !c12 {
+  x q1
+  x q2
+  x q4
+}
+if !c7 & c8 & c9 & c10 & c11 & !c12 {
+  x q2
+  x q4
+}
+if c7 & c8 & c9 & c10 & c11 & !c12 {
+  x q0
+  x q2
+  x q4
+}
+if !c7 & !c8 & !c9 & !c10 & !c11 & c12 {
+  x q6
+}
+if c7 & !c8 & !c9 & !c10 & !c11 & c12 {
+  x q0
+  x q6
+}
+if !c7 & c8 & !c9 & !c10 & !c11 & c12 {
+  x q0
+  x q1
+  x q6
+}
+if c7 & c8 & !c9 & !c10 & !c11 & c12 {
+  x q1
+  x q6
+}
+if !c7 & !c8 & c9 & !c10 & !c11 & c12 {
+  x q3
+  x q4
+  x q5
+}
+if c7 & !c8 & c9 & !c10 & !c11 & c12 {
+  x q1
+  x q2
+  x q6
+}
+if !c7 & c8 & c9 & !c10 & !c11 & c12 {
+  x q2
+  x q6
+}
+if c7 & c8 & c9 & !c10 & !c11 & c12 {
+  x q0
+  x q2
+  x q6
+}
+if !c7 & !c8 & !c9 & c10 & !c11 & c12 {
+  x q4
+  x q5
+}
+if c7 & !c8 & !c9 & c10 & !c11 & c12 {
+  x q0
+  x q4
+  x q5
+}
+if !c7 & c8 & !c9 & c10 & !c11 & c12 {
+  x q2
+  x q3
+  x q6
+}
+if c7 & c8 & !c9 & c10 & !c11 & c12 {
+  x q1
+  x q4
+  x q5
+}
+if !c7 & !c8 & c9 & c10 & !c11 & c12 {
+  x q3
+  x q6
+}
+if c7 & !c8 & c9 & c10 & !c11 & c12 {
+  x q0
+  x q3
+  x q6
+}
+if !c7 & c8 & c9 & c10 & !c11 & c12 {
+  x q2
+  x q4
+  x q5
+}
+if c7 & c8 & c9 & c10 & !c11 & c12 {
+  x q1
+  x q3
+  x q6
+}
+if !c7 & !c8 & !c9 & !c10 & c11 & c12 {
+  x q5
+}
+if c7 & !c8 & !c9 & !c10 & c11 & c12 {
+  x q0
+  x q5
+}
+if !c7 & c8 & !c9 & !c10 & c11 & c12 {
+  x q0
+  x q1
+  x q5
+}
+if c7 & c8 & !c9 & !c10 & c11 & c12 {
+  x q1
+  x q5
+}
+if !c7 & !c8 & c9 & !c10 & c11 & c12 {
+  x q3
+  x q4
+  x q6
+}
+if c7 & !c8 & c9 & !c10 & c11 & c12 {
+  x q1
+  x q2
+  x q5
+}
+if !c7 & c8 & c9 & !c10 & c11 & c12 {
+  x q2
+  x q5
+}
+if c7 & c8 & c9 & !c10 & c11 & c12 {
+  x q0
+  x q2
+  x q5
+}
+if !c7 & !c8 & !c9 & c10 & c11 & c12 {
+  x q4
+  x q6
+}
+if c7 & !c8 & !c9 & c10 & c11 & c12 {
+  x q0
+  x q4
+  x q6
+}
+if !c7 & c8 & !c9 & c10 & c11 & c12 {
+  x q2
+  x q3
+  x q5
+}
+if c7 & c8 & !c9 & c10 & c11 & c12 {
+  x q1
+  x q4
+  x q6
+}
+if !c7 & !c8 & c9 & c10 & c11 & c12 {
+  x q3
+  x q5
+}
+if c7 & !c8 & c9 & c10 & c11 & c12 {
+  x q0
+  x q3
+  x q5
+}
+if !c7 & c8 & c9 & c10 & c11 & c12 {
+  x q2
+  x q4
+  x q6
+}
+if c7 & c8 & c9 & c10 & c11 & c12 {
+  x q1
+  x q3
+  x q5
+}
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2
+measure q3 -> c3
+measure q4 -> c4
+measure q5 -> c5
+measure q6 -> c6

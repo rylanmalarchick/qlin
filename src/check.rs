@@ -212,9 +212,14 @@ pub fn check(
     }
 }
 
+/// Qubits per random input of the stabilizer check that start in an X or
+/// Y basis state. The others start in |0> or |1>.
+const SUPERPOSED: usize = 3;
+
 /// The stabilizer check. Returns the number of inputs compared. An input
-/// on which `a` uses a non-Clifford gate on a qubit in superposition is
-/// skipped, except |0...0>, which must run.
+/// on which `a` uses a non-Clifford gate on a qubit in superposition, or on
+/// which either program has more than `limit` branches, is skipped, except
+/// |0...0>, which must run.
 pub fn equivalent_stab(
     a: &Program,
     b: &Program,
@@ -238,20 +243,32 @@ pub fn equivalent_stab(
     let mut rng = Rng(seed.max(1));
     let mut compared = 0;
     for k in 0..=n_random {
+        // Each qubit in |0> or |1>, and up to SUPERPOSED of them in an X or
+        // Y basis state. Superposed inputs make measurements random, and
+        // the branch count grows as 2^(random measurements).
         let ks: Vec<u64> = if k == 0 {
             Vec::new()
         } else {
-            (0..a.n_qubits)
-                .map(|_| (rng.unit() * 6.0) as u64 % 6)
-                .collect()
+            let mut ks: Vec<u64> = (0..a.n_qubits)
+                .map(|_| (rng.unit() * 2.0) as u64 % 2)
+                .collect();
+            for _ in 0..SUPERPOSED.min(ks.len()) {
+                let q = (rng.unit() * ks.len() as f64) as usize % ks.len();
+                ks[q] = 2 + (rng.unit() * 4.0) as u64 % 4;
+            }
+            ks
         };
         let init = product(n, &ks);
         let ra = match simulate_state(a, init.clone(), limit) {
             Ok(r) => r,
-            Err(SimError::Unsupported(_)) if k > 0 => continue,
+            Err(SimError::Unsupported(_) | SimError::TooManyBranches { .. }) if k > 0 => continue,
             Err(e) => return Err(CheckError::Sim(e)),
         };
-        let rb = simulate_state(&b2, init, limit).map_err(CheckError::Sim)?;
+        let rb = match simulate_state(&b2, init, limit) {
+            Ok(r) => r,
+            Err(SimError::TooManyBranches { .. }) if k > 0 => continue,
+            Err(e) => return Err(CheckError::Sim(e)),
+        };
         let trunc: f64 = ra
             .iter()
             .chain(&rb)

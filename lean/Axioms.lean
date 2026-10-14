@@ -57,6 +57,10 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.CQ.hoist_sound_cq
 #print axioms Qlin.CQ.merge_sound_cq
 #print axioms Qlin.CQ.fastpath_step_cq
+#print axioms Qlin.CQ.ctrl_local
+#print axioms Qlin.CQ.proj_ctrl
+#print axioms Qlin.CQ.chan_proj_ctrl
+#print axioms Qlin.CQ.defer_cq
 -- Negative tests
 #print axioms Qlin.interp_nontrivial
 #print axioms Qlin.hoist_needs_hc

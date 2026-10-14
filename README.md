@@ -87,7 +87,8 @@ model on density matrices (gates and reset as Kraus maps, Z measurement
 with a bit write) in which both axioms are theorems.
 `lean/Qlin/CQGates.lean` proves the sink step in that model from the
 conjugation table, and that the measurement and reset Kraus operators
-sum to the identity. `lean/Qlin/Negative.lean` refutes each rule with
+sum to the identity. `lean/Qlin/CQDefer.lean` proves the direct defer
+rule with one control bit in that model. `lean/Qlin/Negative.lean` refutes each rule with
 one side condition dropped.
 
 ```

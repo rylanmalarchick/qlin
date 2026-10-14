@@ -69,3 +69,4 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.fastpath_needs_hw
 #print axioms Qlin.hoist_latency_needs_henc
 #print axioms Qlin.merge_latency_needs_henc
+#print axioms Qlin.TV.checkBlock_sound

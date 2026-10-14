@@ -8,14 +8,22 @@
 //! program may have extra qubits (ancillas), appended at the end and
 //! starting in |0>. They are traced out. The check is sound but not
 //! complete: it tests finite inputs and finite witnesses.
+//!
+//! Past [`MAX_QUBITS`] qubits, [`check`] uses the stabilizer backend
+//! ([`equivalent_stab`]) on programs it supports: inputs are |0...0> and
+//! seeded products of one-qubit stabilizer states, and the states are
+//! compared exactly, as mixtures of canonical stabilizer states.
 
 use std::collections::BTreeMap;
 use std::fmt;
 
 use num_complex::Complex64 as C;
 
-use crate::ir::Program;
-use crate::sim::{basis_state, distribution, simulate, Branch, SimError};
+use crate::ir::{Op, Program, Qubit};
+use crate::sim::{
+    basis_state, distribution, simulate, simulate_state, Branch, SimError, MAX_QUBITS,
+};
+use crate::stab::{product, state_map};
 
 /// Random witness vectors per check.
 const WITNESSES: usize = 4;
@@ -172,4 +180,111 @@ pub fn equivalent(
         }
     }
     Ok(())
+}
+
+/// Which simulator a [`check`] used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Checked {
+    Dense,
+    /// The number of inputs compared (|0...0> and the supported products).
+    Stabilizer(usize),
+}
+
+/// Compares `a` and `b` with the dense simulator when `b` has at most
+/// [`MAX_QUBITS`] qubits, else with the stabilizer backend. A program that
+/// neither backend runs gives `CheckError::Sim(SimError::TooManyQubits)`.
+pub fn check(
+    a: &Program,
+    b: &Program,
+    n_random: usize,
+    seed: u64,
+    limit: usize,
+) -> Result<Checked, CheckError> {
+    if b.n_qubits <= MAX_QUBITS {
+        return equivalent(a, b, &inputs(a.n_qubits, n_random, seed), limit)
+            .map(|_| Checked::Dense);
+    }
+    match equivalent_stab(a, b, n_random, seed, limit) {
+        Err(CheckError::Sim(SimError::Unsupported(_))) => {
+            Err(CheckError::Sim(SimError::TooManyQubits(b.n_qubits)))
+        }
+        r => r.map(Checked::Stabilizer),
+    }
+}
+
+/// The stabilizer check. Returns the number of inputs compared. An input
+/// on which `a` uses a non-Clifford gate on a qubit in superposition is
+/// skipped, except |0...0>, which must run.
+pub fn equivalent_stab(
+    a: &Program,
+    b: &Program,
+    n_random: usize,
+    seed: u64,
+    limit: usize,
+) -> Result<usize, CheckError> {
+    if a.n_bits != b.n_bits || b.n_qubits < a.n_qubits {
+        return Err(CheckError::Shape(format!(
+            "{}q/{}c vs {}q/{}c",
+            a.n_qubits, a.n_bits, b.n_qubits, b.n_bits
+        )));
+    }
+    // Tracing out an ancilla equals measuring it and dropping the outcome.
+    // The reset does that and returns it to |0>, its state in `a`.
+    let mut b2 = b.clone();
+    for q in a.n_qubits..b.n_qubits {
+        b2.body.push(Op::Reset { q: Qubit(q) });
+    }
+    let n = b.n_qubits as usize;
+    let mut rng = Rng(seed.max(1));
+    let mut compared = 0;
+    for k in 0..=n_random {
+        let ks: Vec<u64> = if k == 0 {
+            Vec::new()
+        } else {
+            (0..a.n_qubits)
+                .map(|_| (rng.unit() * 6.0) as u64 % 6)
+                .collect()
+        };
+        let init = product(n, &ks);
+        let ra = match simulate_state(a, init.clone(), limit) {
+            Ok(r) => r,
+            Err(SimError::Unsupported(_)) if k > 0 => continue,
+            Err(e) => return Err(CheckError::Sim(e)),
+        };
+        let rb = simulate_state(&b2, init, limit).map_err(CheckError::Sim)?;
+        let trunc: f64 = ra
+            .iter()
+            .chain(&rb)
+            .filter(|x| x.truncated)
+            .map(|x| x.prob)
+            .sum();
+        let (da, db) = (distribution(&ra), distribution(&rb));
+        let mut diff = da
+            .keys()
+            .chain(db.keys())
+            .map(|key| (da.get(key).unwrap_or(&0.0) - db.get(key).unwrap_or(&0.0)).abs())
+            .fold(0.0, f64::max);
+        let non_stab =
+            || CheckError::Sim(SimError::Unsupported("non-stabilizer final state".into()));
+        let (sa, sb) = (
+            state_map(&ra).ok_or_else(non_stab)?,
+            state_map(&rb).ok_or_else(non_stab)?,
+        );
+        let empty = BTreeMap::new();
+        for bits in sa.keys().chain(sb.keys()) {
+            let (ma, mb) = (
+                sa.get(bits).unwrap_or(&empty),
+                sb.get(bits).unwrap_or(&empty),
+            );
+            for key in ma.keys().chain(mb.keys()) {
+                let d = (ma.get(key).unwrap_or(&0.0) - mb.get(key).unwrap_or(&0.0)).abs();
+                diff = diff.max(d);
+            }
+        }
+        if diff > TOL + trunc {
+            return Err(CheckError::Mismatch { input: k, diff });
+        }
+        compared += 1;
+    }
+    Ok(compared)
 }

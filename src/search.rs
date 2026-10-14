@@ -16,11 +16,11 @@ use std::cell::Cell;
 
 use serde::Serialize;
 
-use crate::check::{equivalent, inputs, CheckError};
+use crate::check::{check, CheckError};
 use crate::cost::CostModel;
 use crate::ir::Program;
 use crate::latency::{expected, records, Noise, Record, ReplayError};
-use crate::sim::{SimError, MAX_QUBITS};
+use crate::sim::SimError;
 use crate::transform::defer::{apply, candidates, Candidate, Choice, Variant};
 
 /// Two latencies closer than this are equal.
@@ -150,17 +150,14 @@ impl<'a> Problem<'a> {
             .map(|&d| if d { Choice::Defer } else { Choice::Classical })
             .collect();
         let v = self.variant(&choices);
-        if self.check_leaves && v.prog.n_qubits > MAX_QUBITS {
-            self.unchecked.set(self.unchecked.get() + 1);
-        } else if self.check_leaves {
-            equivalent(
-                self.prog,
-                &v.prog,
-                &inputs(self.prog.n_qubits, 8, 13),
-                1 << 16,
-            )
-            .map_err(SearchError::Check)?;
-            self.checked.set(self.checked.get() + 1);
+        if self.check_leaves {
+            match check(self.prog, &v.prog, 8, 13, 1 << 16) {
+                Ok(_) => self.checked.set(self.checked.get() + 1),
+                Err(CheckError::Sim(SimError::TooManyQubits(_))) => {
+                    self.unchecked.set(self.unchecked.get() + 1)
+                }
+                Err(e) => return Err(SearchError::Check(e)),
+            }
         }
         let (mean, worst) = self.mean(&v)?;
         Ok(Point {

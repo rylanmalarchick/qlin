@@ -282,3 +282,65 @@ fn stab_matches_dense_on_random_cliffords() {
     }
     assert_eq!(runs, 300);
 }
+
+fn tele(corrections: &str) -> Program {
+    parse(&format!(
+        "qubits 3\nbits 2\nh q1\ncx q1 q2\ncx q0 q1\nh q0\nmeasure q0 -> c0\nmeasure q1 -> c1\n{corrections}"
+    ))
+    .unwrap()
+}
+
+#[test]
+fn stab_check_passes_on_equal_programs() {
+    use qlin::check::equivalent_stab;
+    use qlin::transform::m0::normal_form;
+    let mut checked = 0;
+    for (path, prog) in small_benchmarks() {
+        let nf = normal_form(&prog);
+        match equivalent_stab(&prog, &nf, 4, 7, LIMIT) {
+            Ok(k) => {
+                assert!(k >= 1);
+                checked += 1;
+            }
+            Err(qlin::check::CheckError::Sim(SimError::Unsupported(_))) => {}
+            Err(e) => panic!("{}: {e}", path.display()),
+        }
+    }
+    // The 28 benchmarks that the tableau runs from |0...0>.
+    assert_eq!(checked, 28);
+    let src = tele("if c1 { x q2 }\nif c0 { z q2 }\n");
+    let swapped = tele("if c0 { z q2 }\nif c1 { x q2 }\n");
+    // X and Z anticommute, so the order changes only a global phase.
+    assert!(equivalent_stab(&src, &swapped, 8, 3, LIMIT).is_ok());
+}
+
+#[test]
+fn stab_check_rejects_planted_errors() {
+    use qlin::check::{equivalent_stab, CheckError};
+    let src = tele("if c1 { x q2 }\nif c0 { z q2 }\n");
+    // The bits agree in every case below. Only the state of q2 differs.
+    for wrong in [
+        "if c1 { x q2 }\n",
+        "if c1 { x q2 }\nif c0 { x q2 }\n",
+        "if c0 { x q2 }\nif c1 { z q2 }\n",
+    ] {
+        let r = equivalent_stab(&src, &tele(wrong), 8, 3, LIMIT);
+        assert!(
+            matches!(r, Err(CheckError::Mismatch { .. })),
+            "{wrong:?}: {r:?}"
+        );
+    }
+    // Deferred with a copy ancilla q3, but the copy feeds the wrong gate.
+    let src1 = tele("if c1 { x q2 }\n");
+    let good = parse(
+        "qubits 4\nbits 2\nh q1\ncx q1 q2\ncx q0 q1\nh q0\nmeasure q0 -> c0\ncx q1 q3\nmeasure q1 -> c1\ncx q3 q2\n",
+    )
+    .unwrap();
+    let bad = parse(
+        "qubits 4\nbits 2\nh q1\ncx q1 q2\ncx q0 q1\nh q0\nmeasure q0 -> c0\ncx q1 q3\nmeasure q1 -> c1\ncz q3 q2\n",
+    )
+    .unwrap();
+    assert!(equivalent_stab(&src1, &good, 8, 3, LIMIT).is_ok());
+    let r = equivalent_stab(&src1, &bad, 8, 3, LIMIT);
+    assert!(matches!(r, Err(CheckError::Mismatch { .. })), "{r:?}");
+}

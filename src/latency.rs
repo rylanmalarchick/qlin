@@ -19,7 +19,8 @@ use serde::Serialize;
 
 use crate::cost::{CostModel, Sync};
 use crate::ir::{Bit, BitExpr, Block, Op, OpPath, Program, Qubit};
-use crate::sim::{basis_state, simulate, SimError, MAX_QUBITS};
+use crate::sim::{basis_state, simulate, simulate_state, Branch, SimError, MAX_QUBITS};
+use crate::stab::Tableau;
 use crate::stats::noise_bits;
 
 /// One outcome of the source program: each bit's measured values in order.
@@ -35,12 +36,23 @@ pub struct Record {
 type RecordKey = (Vec<(Bit, Vec<bool>)>, bool);
 
 /// Simulates `prog` from |0...0> and returns its outcome records, with
-/// equal records merged.
+/// equal records merged. Past [`MAX_QUBITS`] qubits it uses the stabilizer
+/// backend, and a program that backend does not run gives
+/// `SimError::TooManyQubits`.
 pub fn records(prog: &Program, limit: usize) -> Result<Vec<Record>, SimError> {
     if prog.n_qubits > MAX_QUBITS {
-        return Err(SimError::TooManyQubits(prog.n_qubits));
+        let init = Tableau::zero(prog.n_qubits as usize);
+        return match simulate_state(prog, init, limit) {
+            Ok(branches) => Ok(merge_records(branches)),
+            Err(SimError::Unsupported(_)) => Err(SimError::TooManyQubits(prog.n_qubits)),
+            Err(e) => Err(e),
+        };
     }
     let branches = simulate(prog, &basis_state(prog.n_qubits, 0), limit)?;
+    Ok(merge_records(branches))
+}
+
+fn merge_records<S>(branches: Vec<Branch<S>>) -> Vec<Record> {
     let mut merged: BTreeMap<RecordKey, f64> = BTreeMap::new();
     for b in branches {
         let mut per_bit: BTreeMap<Bit, Vec<bool>> = BTreeMap::new();
@@ -51,14 +63,14 @@ pub fn records(prog: &Program, limit: usize) -> Result<Vec<Record>, SimError> {
             .entry((per_bit.into_iter().collect(), b.truncated))
             .or_insert(0.0) += b.prob;
     }
-    Ok(merged
+    merged
         .into_iter()
         .map(|((outcomes, truncated), prob)| Record {
             prob,
             outcomes: outcomes.into_iter().collect(),
             truncated,
         })
-        .collect())
+        .collect()
 }
 
 /// Error-injection ops: ops on noise qubits, and Ifs whose condition reads

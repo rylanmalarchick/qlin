@@ -3,13 +3,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
-use qlin::check::{equivalent, inputs};
+use qlin::check::{check, CheckError};
 use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
 use qlin::latency::{expected, records, Expected, Noise};
 use qlin::search::{Problem, SearchError};
-use qlin::sim::{basis_state, simulate};
+use qlin::sim::{basis_state, simulate, SimError};
 use qlin::stats::stats_with_noise;
 use qlin::text::{format_leaf, parse, print};
 use qlin::trace::enumerate;
@@ -329,10 +329,12 @@ fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
         f.t.unwrap_or(1),
         f.size.unwrap_or(4096),
     );
-    let checked = if f.check && prog.n_qubits <= qlin::sim::MAX_QUBITS {
-        equivalent(prog, &fp.prog, &inputs(prog.n_qubits, 8, 31), SIM_LIMIT)
-            .map_err(|e| format!("fast path failed the equivalence check: {e}"))?;
-        true
+    let checked = if f.check {
+        match check(prog, &fp.prog, 8, 31, SIM_LIMIT) {
+            Ok(_) => true,
+            Err(CheckError::Sim(SimError::TooManyQubits(_))) => false,
+            Err(e) => return Err(format!("fast path failed the equivalence check: {e}")),
+        }
     } else {
         false
     };

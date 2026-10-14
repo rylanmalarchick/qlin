@@ -374,6 +374,32 @@ impl QState for Tableau {
     }
 }
 
+/// One of the six one-qubit stabilizer states, as gates on |0>:
+/// |0>, |1>, |+>, |->, |+i>, |-i> for `k` mod 6.
+pub fn prep_gates(k: u64) -> Vec<Gate> {
+    match k % 6 {
+        0 => vec![],
+        1 => vec![Gate::X],
+        2 => vec![Gate::H],
+        3 => vec![Gate::X, Gate::H],
+        4 => vec![Gate::H, Gate::S],
+        _ => vec![Gate::X, Gate::H, Gate::S],
+    }
+}
+
+/// The product state on `n` qubits with qubit `q` in state `ks[q]` of
+/// [`prep_gates`]. Qubits past `ks` start in |0>.
+pub fn product(n: usize, ks: &[u64]) -> Tableau {
+    let mut t = Tableau::zero(n);
+    for (q, &k) in ks.iter().enumerate() {
+        for g in prep_gates(k) {
+            t.apply(&g, &[Qubit(q as u32)], &[])
+                .expect("prep gates are Clifford");
+        }
+    }
+    t
+}
+
 /// Groups branch states by final bits: for each bit vector, the total
 /// probability of each canonical stabilizer state. Two equal maps give
 /// equal cq states. None when a branch ends in a non-stabilizer state.

@@ -19,7 +19,9 @@ use serde::Serialize;
 
 use crate::cost::{CostModel, Sync};
 use crate::ir::{Bit, BitExpr, Block, Op, OpPath, Program, Qubit};
-use crate::sim::{basis_state, simulate, simulate_state, Branch, SimError, MAX_QUBITS};
+use crate::sim::{
+    basis_state, sample_paths, simulate, simulate_state, Branch, SimError, MAX_QUBITS,
+};
 use crate::stab::Tableau;
 use crate::stats::noise_bits;
 
@@ -50,6 +52,50 @@ pub fn records(prog: &Program, limit: usize) -> Result<Vec<Record>, SimError> {
     }
     let branches = simulate(prog, &basis_state(prog.n_qubits, 0), limit)?;
     Ok(merge_records(branches))
+}
+
+/// `n` outcome records sampled from `prog` from |0...0> (seeded), each
+/// with weight 1/n, equal records merged. The expected latency over them
+/// is a Monte Carlo estimate. Uses the stabilizer backend past
+/// [`MAX_QUBITS`] qubits, as [`records`] does.
+pub fn sampled_records(prog: &Program, n: usize, seed: u64) -> Result<Vec<Record>, SimError> {
+    let mut x = seed.max(1);
+    let mut uniform = move || {
+        // xorshift64*, as in check.rs.
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        (x.wrapping_mul(0x2545_F491_4F6C_DD1D) >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut branches = if prog.n_qubits > MAX_QUBITS {
+        let init = Tableau::zero(prog.n_qubits as usize);
+        match sample_paths(prog, &init, n, &mut uniform) {
+            Ok(b) => b
+                .into_iter()
+                .map(|b| (b.outcomes, b.truncated))
+                .collect::<Vec<_>>(),
+            Err(SimError::Unsupported(_)) => return Err(SimError::TooManyQubits(prog.n_qubits)),
+            Err(e) => return Err(e),
+        }
+    } else {
+        let init = basis_state(prog.n_qubits, 0);
+        sample_paths(prog, &init, n, &mut uniform)?
+            .into_iter()
+            .map(|b| (b.outcomes, b.truncated))
+            .collect()
+    };
+    let weight = 1.0 / n as f64;
+    let paths: Vec<Branch<()>> = branches
+        .drain(..)
+        .map(|(outcomes, truncated)| Branch {
+            outcomes,
+            bits: Vec::new(),
+            prob: weight,
+            state: (),
+            truncated,
+        })
+        .collect();
+    Ok(merge_records(paths))
 }
 
 fn merge_records<S>(branches: Vec<Branch<S>>) -> Vec<Record> {

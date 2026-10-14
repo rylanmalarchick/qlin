@@ -7,7 +7,7 @@ use qlin::check::{check, CheckError, Checked};
 use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
-use qlin::latency::{expected, records, Expected, Noise};
+use qlin::latency::{expected, records, sampled_records, Expected, Noise, Record};
 use qlin::search::{Problem, SearchError};
 use qlin::sim::{basis_state, simulate, SimError};
 use qlin::stats::stats_with_noise;
@@ -70,6 +70,9 @@ struct Flags {
     gates: [Option<f64>; 3],
     /// Grid for `sweep`: t_meas, t_ff, t_branch values.
     grid: [Vec<f64>; 3],
+    /// `lat --sample N --seed S`: Monte Carlo over N sampled records.
+    sample: Option<usize>,
+    seed: Option<u64>,
 }
 
 impl Flags {
@@ -146,7 +149,7 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
             }
             Some(
                 flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t1q" | "--t2q" | "--treset" | "--t"
-                | "--size" | "--model"),
+                | "--size" | "--model" | "--sample" | "--seed"),
             ) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
@@ -159,6 +162,8 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                     "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),
                     "--t" => f.t = Some(v.parse().map_err(|_| bad())?),
                     "--size" => f.size = Some(v.parse().map_err(|_| bad())?),
+                    "--sample" => f.sample = Some(v.parse().map_err(|_| bad())?),
+                    "--seed" => f.seed = Some(v.parse().map_err(|_| bad())?),
                     _ => {
                         f.block = match v.as_str() {
                             "block" => true,
@@ -312,6 +317,26 @@ fn lat(prog: &Program, f: &Flags) -> Result<Expected, String> {
     .map_err(|e| e.to_string())
 }
 
+/// Monte Carlo expected latency over `n` sampled records, with the
+/// standard error of the mean.
+fn sampled_lat(prog: &Program, f: &Flags, n: usize, seed: u64) -> Result<String, String> {
+    let recs = sampled_records(prog, n, seed).map_err(|e| e.to_string())?;
+    let (cost, noise, none) = (f.cost()?, Noise::new(prog, &f.noise), BTreeSet::new());
+    let mut lats = Vec::with_capacity(recs.len());
+    for r in &recs {
+        let one = Record {
+            prob: 1.0,
+            ..r.clone()
+        };
+        let e = expected(prog, &[one], &cost, &noise, &none).map_err(|e| e.to_string())?;
+        lats.push((r.prob, e.mean));
+    }
+    let mean: f64 = lats.iter().map(|(w, l)| w * l).sum();
+    let var: f64 = lats.iter().map(|(w, l)| w * (l - mean).powi(2)).sum();
+    let se = (var / (n as f64 - 1.0).max(1.0)).sqrt();
+    Ok(serde_json::json!({ "mean": mean, "se": se, "samples": n, "seed": seed }).to_string())
+}
+
 /// Normal form, optional sink, then the fast path.
 fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
     let cost = f.cost()?;
@@ -436,7 +461,10 @@ fn run(args: &[String]) -> Result<String, String> {
         }
         "lat" => {
             let (file, f) = flags(rest)?;
-            serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string())
+            match f.sample {
+                None => serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string()),
+                Some(n) => sampled_lat(&load(file)?, &f, n, f.seed.unwrap_or(1)),
+            }
         }
         "sim" => {
             let [file] = rest else {

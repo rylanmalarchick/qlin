@@ -262,6 +262,36 @@ pub fn simulate_state<S: QState>(
     init: S,
     limit: usize,
 ) -> Result<Vec<Branch<S>>, SimError> {
+    drive(prog, init, limit, &mut None)
+}
+
+/// A source of uniform numbers in [0, 1), for sampled runs.
+pub type Uniform<'u> = &'u mut dyn FnMut() -> f64;
+
+/// `n` sampled runs of `prog` from `init`: at each measurement or reset
+/// the outcome is drawn with its probability, so each returned branch is
+/// one path, drawn with its path probability (kept in `prob`).
+pub fn sample_paths<S: QState>(
+    prog: &Program,
+    init: &S,
+    n: usize,
+    uniform: Uniform<'_>,
+) -> Result<Vec<Branch<S>>, SimError> {
+    let mut out = Vec::with_capacity(n);
+    let mut sampler = Some(uniform);
+    for _ in 0..n {
+        out.extend(drive(prog, init.clone(), 1, &mut sampler)?);
+    }
+    Ok(out)
+}
+
+/// Runs every branch, or one sampled path when `sampler` is set.
+fn drive<S: QState>(
+    prog: &Program,
+    init: S,
+    limit: usize,
+    sampler: &mut Option<Uniform<'_>>,
+) -> Result<Vec<Branch<S>>, SimError> {
     let mut work = vec![Run {
         conts: vec![Cont::Ops(&prog.body)],
         branch: Branch {
@@ -279,7 +309,7 @@ pub fn simulate_state<S: QState>(
                 Cont::Ops([]) => {}
                 Cont::Ops([op, rest @ ..]) => {
                     run.conts.push(Cont::Ops(rest));
-                    step(op, &mut run, &mut work)?;
+                    step(op, &mut run, &mut work, sampler)?;
                 }
                 Cont::LoopTail {
                     body,
@@ -304,7 +334,7 @@ pub fn simulate_state<S: QState>(
                     }
                 }
             }
-            if work.len() + done.len() >= limit {
+            if sampler.is_none() && work.len() + done.len() >= limit {
                 return Err(SimError::TooManyBranches { limit });
             }
         }
@@ -316,9 +346,21 @@ pub fn simulate_state<S: QState>(
 /// Splits `run` on qubit `q`. If both outcomes are possible, `run` keeps
 /// outcome 0 and a clone with outcome 1 goes to `work`. Returns the outcome
 /// that `run` keeps.
-fn split<'a, S: QState>(run: &mut Run<'a, S>, q: Qubit, work: &mut Vec<Run<'a, S>>) -> bool {
+fn split<'a, S: QState>(
+    run: &mut Run<'a, S>,
+    q: Qubit,
+    work: &mut Vec<Run<'a, S>>,
+    sampler: &mut Option<Uniform<'_>>,
+) -> bool {
     let p1 = run.branch.state.prob_one(q);
     let p0 = 1.0 - p1;
+    if let (Some(u), true) = (sampler.as_mut(), p0 > PROB_EPS && p1 > PROB_EPS) {
+        let outcome = u() < p1;
+        let p = if outcome { p1 } else { p0 };
+        run.branch.state.collapse(q, outcome, p);
+        run.branch.prob *= p;
+        return outcome;
+    }
     if p0 > PROB_EPS && p1 > PROB_EPS {
         let mut one = run.clone();
         one.branch.state.collapse(q, true, p1);
@@ -339,6 +381,7 @@ fn step<'a, S: QState>(
     op: &'a Op,
     run: &mut Run<'a, S>,
     work: &mut Vec<Run<'a, S>>,
+    sampler: &mut Option<Uniform<'_>>,
 ) -> Result<(), SimError> {
     match op {
         Op::Gate {
@@ -348,7 +391,7 @@ fn step<'a, S: QState>(
         } => run.branch.state.apply(gate, qubits, params)?,
         Op::Measure { q, b } => {
             let before = work.len();
-            let outcome = split(run, *q, work);
+            let outcome = split(run, *q, work, sampler);
             if work.len() > before {
                 let one = work.last_mut().expect("split pushed a branch");
                 one.branch.bits[b.0 as usize] = true;
@@ -359,7 +402,7 @@ fn step<'a, S: QState>(
         }
         Op::Reset { q } => {
             let before = work.len();
-            let outcome = split(run, *q, work);
+            let outcome = split(run, *q, work, sampler);
             if work.len() > before {
                 let one = work.last_mut().expect("split pushed a branch");
                 one.branch.state.flip(*q);

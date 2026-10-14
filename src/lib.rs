@@ -15,6 +15,7 @@ pub mod latency;
 pub mod pauli;
 pub mod search;
 pub mod sim;
+pub mod stab;
 pub mod stats;
 pub mod text;
 pub mod trace;

@@ -13,7 +13,8 @@ An `Interp` gives each leaf an additive map with two axioms:
   the leaf writes.
 - A2 (`comm`): leaves with disjoint footprints commute.
 
-These two axioms are true for cq channels (hand-checked, not in Lean).
+These two axioms hold for cq channels: `CQ.lean` builds an `Interp` on
+density matrices (gates, reset, Z measurement) in which both are theorems.
 The fact that unwritten bits keep their value (A3 in the plan) follows
 from A1 (`Structure.lean`).
 -/

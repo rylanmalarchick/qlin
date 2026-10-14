@@ -82,8 +82,13 @@ rewrite rules are sound: the M0 moves (fold, hoist, merge, unroll), the
 fast-path step, the Pauli sink and its conjugation table, and that a
 hoist or merge step never increases replay latency (claim C1). Leaves are
 opaque. Their semantics is any additive map that satisfies two axioms,
-listed in `lean/Qlin/Sem.lean`. `lean/Qlin/Negative.lean` refutes each
-rule with one side condition dropped.
+listed in `lean/Qlin/Sem.lean`. `lean/Qlin/CQ.lean` gives a concrete
+model on density matrices (gates and reset as Kraus maps, Z measurement
+with a bit write) in which both axioms are theorems.
+`lean/Qlin/CQGates.lean` proves the sink step in that model from the
+conjugation table, and that the measurement and reset Kraus operators
+sum to the identity. `lean/Qlin/Negative.lean` refutes each rule with
+one side condition dropped.
 
 ```
 cd lean

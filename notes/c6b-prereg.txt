@@ -1,0 +1,42 @@
+C6b, amplified ranking test on ibm_kingston: analysis plan, fixed before
+any job runs
+========================================================================
+Written 2026-10-14, committed before the run.
+
+Question: does five_qubit_code best_defer gain time per copy over source
+on ibm_kingston, at the rate the block model predicts?
+
+Design: each program runs with its body repeated k times in one circuit,
+k in {1, 2, 4, 8}, every qubit reset between copies
+(bench/run_phase4_ibm.py --copies). A copy's gap adds once per copy, while
+the job-to-job noise (dominated by the repetition delay and queue state)
+does not grow with k. So the slope of per-shot time against k measures the
+gap per copy.
+  Command: uv run --project bench python bench/run_phase4_ibm.py
+    --bench five_qubit_code --variants source,best_defer --copies 1,2,4,8
+    --repeats 15 --interleave --budget 300 --out phase7_c6b
+  One round runs 8 jobs of 1000 shots in the order source_x1,
+  best_defer_x1, source_x2, ..., best_defer_x8. One 100-shot smoke job
+  first. If the budget cap stops the run early, the analysis uses the
+  complete rounds.
+
+Model prediction (block model, HERON_KINGSTON with the FakeKingston
+snapshot, t_ff 600, t_branch 3450 ns = the measured branch cost; k = 1
+exact, k > 1 sampled with 2000 records): gap per k 19.29, 38.51, 76.96,
+153.84 us. Gap slope 19.22 us per copy.
+
+Outlier rule (fixed now): drop a job whose per-shot time exceeds the
+median of its (variant, k) cell by more than 1000 us. Report how many.
+
+Primary analysis (bench/analyze_c6b.py):
+  For each round r: least-squares slope of per-shot time on k for each
+  variant (kept jobs, at least 2 k values each), and
+  g_r = slope_source - slope_defer.
+  1. Mean of g_r with a 95% t interval.
+  2. Two-sided one-sample t test of g_r against 19.22 us.
+  3. Wilcoxon signed-rank test of g_r against 0.
+Reading:
+  - The model ranking is confirmed if the interval in 1 lies above 0.
+  - The model's size is rejected if test 2 gives p < 0.05.
+  - Otherwise "not resolved".
+Shapiro-Wilk on g_r is reported, as a check on the t tests.

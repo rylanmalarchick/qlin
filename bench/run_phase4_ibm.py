@@ -6,6 +6,7 @@ Run: cargo build --release, then
      uv run --project bench python bench/run_phase4_ibm.py --probe     # also rerun the branch probe
      ... --bench five_qubit --variants source,best_defer              # a subset only
      ... --repeats 27 --interleave   # N jobs per variant, one per variant per round
+     ... --copies 1,2,4,8            # each variant also with its body run k times
 Before any device job, each transpiled circuit is simulated on Aer and must
 match qlin's output distribution (an offline smoke test).
      uv run --project bench python bench/run_phase4_ibm.py --dry-run  # offline
@@ -43,6 +44,8 @@ PROBE_KS = [0, 1, 2, 4, 8]
 BUDGET_S = 30  # per run; raise only with --budget SECONDS
 SMOKE_SHOTS = 100
 MIN_REMAINING_S = 60
+# Sampled records per model prediction of a repeated program (--copies).
+MODEL_SAMPLES = 2000
 # The device the HERON_KINGSTON preset comes from.
 BACKEND = "ibm_kingston"
 
@@ -63,6 +66,23 @@ def model_flags(cal: dict[str, float]) -> list[str]:
     return ["--preset", "heron_kingston", "--tff", "600",
             "--t1q", str(cal["t1q"]), "--t2q", str(cal["t2q"]),
             "--tmeas", str(cal["tmeas"]), "--treset", str(cal["treset"])]
+
+
+def repeat_program(qtext: str, k: int) -> str:
+    """`qtext` with its body run `k` times, every qubit reset between
+    copies. Each copy overwrites the same bits, so the output distribution
+    is the one of a single copy. Used to scale a per-shot time gap by k."""
+    lines = [ln for ln in qtext.splitlines() if ln.strip() and not ln.startswith("#")]
+    head, body = lines[:2], lines[2:]
+    if not (head[0].startswith("qubits ") and head[1].startswith("bits ")):
+        raise ValueError("expected `qubits N` and `bits M` first")
+    n = int(head[0].split()[1])
+    out = list(head)
+    for i in range(k):
+        if i:
+            out += [f"reset q{q}" for q in range(n)]
+        out += body
+    return "\n".join(out) + "\n"
 
 
 def variants(path: str, flags: list[str]) -> dict[str, str]:
@@ -143,11 +163,12 @@ def aer_matches(circ, qtext: str) -> str | None:
 
 def main(dry: bool, probe: bool = False, bench: str | None = None,
          only: set[str] | None = None, out: str | None = None,
-         interleave: bool = False) -> int:
+         interleave: bool = False, copies: list[int] | None = None) -> int:
+    copies = copies or [1]
     RESULTS.mkdir(exist_ok=True)
     if dry:
         from qiskit_ibm_runtime.fake_provider import FakeKingston
-        backend, service = FakeKingston(), None
+        backend, service, start_consumed = FakeKingston(), None, 0
     else:
         from qiskit_ibm_runtime import QiskitRuntimeService
         from qiskit_ibm_runtime.accounts.exceptions import InvalidAccountError
@@ -268,9 +289,16 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
     for path in [b for b in BENCHES if bench is None or bench in b]:
         failed = None
         pending: list[tuple[dict, object]] = []
-        for name, qtext in variants(str(ROOT / path), flags).items():
-            if only is not None and name not in only:
-                continue
+        base = variants(str(ROOT / path), flags)
+        # name -> (program text, one-copy text). A repeated program has the
+        # output distribution of one copy, which the Aer smoke test uses.
+        # Order k-major (source_x1, best_defer_x1, source_x2, ...), so that
+        # interleaved rounds alternate the variants at each k.
+        expanded = {f"{n}_x{k}" if copies != [1] else n: (repeat_program(t, k), t, k)
+                    for k in copies for n, t in base.items() if only is None or n in only}
+        for name, (qtext, one_copy, k) in expanded.items():
+            # A repeated program has too many exact records: sample them.
+            lat_args = [] if k == 1 else ["--sample", str(MODEL_SAMPLES), "--seed", "1"]
             # The circuit the device runs, back in qlin form for the model.
             try:
                 circ0 = to_qiskit(json.loads(qlin_text(qtext, "json")), switch_as_if=True,
@@ -282,8 +310,8 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
                 save()
                 continue
             text = from_qiskit(circ0)
-            ideal = json.loads(qlin_text(text, "lat", *flags))["mean"]
-            block = json.loads(qlin_text(text, "lat", *flags, "--model", "block"))["mean"]
+            ideal = json.loads(qlin_text(text, "lat", *flags, *lat_args))["mean"]
+            block = json.loads(qlin_text(text, "lat", *flags, "--model", "block", *lat_args))["mean"]
             row = {"benchmark": path, "variant": name, "ideal_ns": ideal, "block_ns": block,
                    "depth": None, "times": [], "jobs": [], "why": ibm_violation(circ0)}
             if row["why"] is None and failed:
@@ -292,7 +320,7 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
                 circ = transpile(circ0, backend=backend, optimization_level=1, seed_transpiler=0)
                 circ.metadata = circ0.metadata
                 row["depth"] = circ.depth()
-                row["why"] = aer_matches(circ, qtext)
+                row["why"] = aer_matches(circ, one_copy)
             if row["why"] is None and not dry and interleave:
                 pending.append((row, circ))
             elif row["why"] is None and not dry:
@@ -364,4 +392,5 @@ if __name__ == "__main__":
     only = set(arg("--variants").split(",")) if arg("--variants") else None
     sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv,
                   bench=arg("--bench"), only=only, out=arg("--out"),
-                  interleave="--interleave" in sys.argv))
+                  interleave="--interleave" in sys.argv,
+                  copies=[int(k) for k in arg("--copies").split(",")] if arg("--copies") else None))

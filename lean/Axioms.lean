@@ -37,6 +37,13 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.hoist_latency
 #print axioms Qlin.merge_latency
 #print axioms Qlin.makespan_le
+-- CQ model (A1 and A2 for density matrices)
+#print axioms Qlin.CQ.lift_comm
+#print axioms Qlin.CQ.chan_comm
+#print axioms Qlin.CQ.Spec.sem_restrict
+#print axioms Qlin.CQ.Spec.sem_comm
+#print axioms Qlin.CQ.interp
+#print axioms Qlin.CQ.interp_leaf
 -- Negative tests
 #print axioms Qlin.interp_nontrivial
 #print axioms Qlin.hoist_needs_hc

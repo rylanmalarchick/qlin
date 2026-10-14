@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
-use qlin::check::{check, CheckError};
+use qlin::check::{check, CheckError, Checked};
 use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
@@ -36,6 +36,8 @@ usage:
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
   qlin traces FILE.qlin                   every per-outcome trace as JSON
+  qlin check A.qlin B.qlin                compare B with A by simulation (dense up
+                                          to 12 qubits, stabilizer past that) as JSON
   qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
@@ -412,6 +414,25 @@ fn run(args: &[String]) -> Result<String, String> {
                 })
                 .collect();
             serde_json::to_string(&out).map_err(|e| e.to_string())
+        }
+        "check" => {
+            let [a, b] = rest else {
+                return Err(USAGE.into());
+            };
+            let out = match check(&load(a)?, &load(b)?, 8, 31, SIM_LIMIT) {
+                Ok(Checked::Dense) => serde_json::json!({ "equal": true, "backend": "dense" }),
+                Ok(Checked::Stabilizer(k)) => {
+                    serde_json::json!({ "equal": true, "backend": "stabilizer", "inputs": k })
+                }
+                Err(CheckError::Sim(SimError::TooManyQubits(n))) => {
+                    serde_json::json!({ "equal": null, "unsupported": format!("{n} qubits, not a stabilizer program") })
+                }
+                Err(e @ CheckError::Mismatch { .. }) | Err(e @ CheckError::Shape(_)) => {
+                    serde_json::json!({ "equal": false, "why": e.to_string() })
+                }
+                Err(e) => return Err(e.to_string()),
+            };
+            Ok(out.to_string())
         }
         "lat" => {
             let (file, f) = flags(rest)?;

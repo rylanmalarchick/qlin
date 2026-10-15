@@ -36,6 +36,10 @@ usage:
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
   qlin traces FILE.qlin                   every per-outcome trace as JSON
+  qlin tv-export [--t T] [--sink] [--noise-qubits I,J] FILE.qlin
+                                          translation-validation jobs for
+                                          lean/QlinCheck.lean: source -> M0 normal
+                                          form, base -> fast path for t = 0..T (default 2)
   qlin check [--random N] A.qlin B.qlin   compare B with A by simulation (dense up
                                           to 12 qubits, stabilizer past that) from
                                           |0...0> and N random inputs (default 8)
@@ -338,6 +342,34 @@ fn sampled_lat(prog: &Program, f: &Flags, n: usize, seed: u64) -> Result<String,
     Ok(serde_json::json!({ "mean": mean, "se": se, "samples": n, "seed": seed }).to_string())
 }
 
+/// The M0 job (source to normal form) and one fast-path job per t (the
+/// normal form, or its sink, to the fast path). The sink step itself is
+/// not a job: its rule is in Lean, the Rust sink is checked by simulation.
+fn tv_export(prog: &Program, file: &str, f: &Flags) -> Result<String, String> {
+    let mut kinds = qlin::tv::Kinds::default();
+    let normal = normal_form(prog);
+    let noise = Noise::new(&normal, &f.noise);
+    let base = if f.sink {
+        sink(&normal, &noise).prog
+    } else {
+        normal.clone()
+    };
+    let recs = records(&base, SIM_LIMIT).map_err(|e| e.to_string())?;
+    let mut jobs = vec![qlin::tv::job(
+        &format!("{file} m0"),
+        "m0",
+        prog,
+        &normal,
+        &mut kinds,
+    )];
+    for t in 0..=f.t.unwrap_or(2) {
+        let fp = fast_path(&base, &recs, &noise, t, f.size.unwrap_or(4096));
+        let name = format!("{file} fp t={t}{}", if f.sink { " sink" } else { "" });
+        jobs.push(qlin::tv::job(&name, "fp", &base, &fp.prog, &mut kinds));
+    }
+    serde_json::to_string(&jobs).map_err(|e| e.to_string())
+}
+
 /// Normal form, optional sink, then the fast path.
 fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
     let cost = f.cost()?;
@@ -440,6 +472,10 @@ fn run(args: &[String]) -> Result<String, String> {
                 })
                 .collect();
             serde_json::to_string(&out).map_err(|e| e.to_string())
+        }
+        "tv-export" => {
+            let (file, f) = flags(rest)?;
+            tv_export(&load(file)?, file, &f)
         }
         "check" => {
             let (n_random, files) = match rest {

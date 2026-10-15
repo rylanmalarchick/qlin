@@ -637,7 +637,122 @@ theorem checkBlock_sound : ∀ (f : ℕ) (W : Finset Bit) (src tgt : List SOp),
                 exact ite_step hH hM (ih _ _ _ hA) (ih _ _ _ hB) (ih _ _ _ hR)
           · simp at hm
 
+/-! ## The fast-path checker -/
+
+def isIteS : SOp → Bool
+  | .ite _ _ _ => true
+  | _ => false
+
+/-- The arm of an If that `v` selects; other ops stay (`sel`). -/
+def selS (v : Assign) : SOp → List SOp
+  | .ite c A B => if c.eval v then A else B
+  | o => [o]
+
+def selectedS (v : Assign) (grp : List SOp) : List SOp := (grp.map (selS v)).flatten
+
+theorem toOps_selS (v : Assign) (o : SOp) : SOp.toOps (selS v o) = sel v (SOp.toOp o) := by
+  cases o with
+  | ite c A B =>
+    simp only [selS, SOp.toOp, sel, SExpr.toCond]
+    split_ifs <;> rfl
+  | leaf l => simp [selS, SOp.toOp, sel, SOp.toOps]
+  | loop K b c => simp [selS, SOp.toOp, sel, SOp.toOps]
+  | switch G cs d => simp [selS, SOp.toOp, sel, SOp.toOps]
+
+theorem toOps_selectedS (v : Assign) (grp : List SOp) :
+    SOp.toOps (selectedS v grp) = selected v (SOp.toOps grp) := by
+  induction grp with
+  | nil => simp [selectedS, selected, SOp.toOps]
+  | cons o os ih =>
+    simp only [selectedS, List.map_cons, List.flatten_cons, SOp.toOps_append] at ih ⊢
+    rw [ih, toOps_selS]
+    simp [selected, SOp.toOps]
+
+theorem toCases_eq_map (G : List Bit) (cs : List (List Bool × List SOp)) :
+    SOp.toCases G cs = cs.map fun p => (assignOf G p.1, SOp.toOps p.2) := by
+  induction cs with
+  | nil => simp [SOp.toCases]
+  | cons p cs ih => obtain ⟨v, b⟩ := p; simp [SOp.toCases, ih]
+
+/-- One dispatch: `T = [switch G cs P]`, `P` a group of Ifs on bits of `G`
+that writes no bit of `G`, then the rest, and `rec` accepts each case body
+against the arms its value selects, then the rest. -/
+def fpSwitch (rec : List SOp → List SOp → Bool) (P T : List SOp) : Bool :=
+  match T with
+  | [.switch G cs dflt] =>
+    decide (dflt = P) &&
+    (List.range (P.length + 1)).any fun i =>
+      (P.take i).all (fun o => match o with
+        | .ite c _ _ => decide (c.bits ⊆ G.toFinset)
+        | _ => false) &&
+      decide (Disjoint G.toFinset (writesL (P.take i))) &&
+      cs.all fun p => rec (selectedS (assignOf G p.1) (P.take i) ++ P.drop i) p.2
+  | _ => false
+
+/-- An equal head, and `rec` accepts the tails. -/
+def fpHead (rec : List SOp → List SOp → Bool) (P T : List SOp) : Bool :=
+  match T, P with
+  | o :: T', o' :: P' => decide (o = o') && rec P' T'
+  | _, _ => false
+
+/-- Is `T` a fast path of `P`? Equal, or one dispatch, or an equal head and
+a fast path of the tail. -/
+def checkFP : ℕ → List SOp → List SOp → Bool
+  | 0, _, _ => false
+  | f + 1, P, T => decide (T = P) || fpSwitch (checkFP f) P T || fpHead (checkFP f) P T
+
+/-- A `true` answer of the fast-path checker implies equal denotations. -/
+theorem checkFP_sound : ∀ (f : ℕ) (P T : List SOp), checkFP f P T = true →
+    ∀ (D : Type) [AddCommMonoid D] (I : Interp D) (s : State D),
+      denB I (SOp.toOps T) s = denB I (SOp.toOps P) s := by
+  intro f
+  induction f with
+  | zero => intro P T h; simp [checkFP] at h
+  | succ f ih =>
+    intro P T h D _ I s
+    simp only [checkFP, Bool.or_eq_true, decide_eq_true_eq] at h
+    rcases h with (rfl | h) | h
+    · rfl
+    · unfold fpSwitch at h
+      split at h
+      · rename_i G cs dflt
+        simp only [Bool.and_eq_true, decide_eq_true_eq, List.any_eq_true] at h
+        obtain ⟨rfl, i, -, ⟨⟨hbits, hw⟩, hcs⟩⟩ := h
+        rw [List.all_eq_true] at hbits hcs
+        simp only [SOp.toOps, SOp.toOp, denB]
+        rw [← List.take_append_drop i dflt, SOp.toOps_append]
+        refine fastpath_step I G.toFinset _ _ _ ?_ ?_ ?_ s
+        · intro o ho c A B hoc
+          rw [SOp.toOps_eq_map, List.mem_map] at ho
+          obtain ⟨x, hx, rfl⟩ := ho
+          have hb := hbits x hx
+          cases x with
+          | ite c' A' B' =>
+            simp only [SOp.toOp, Op.ite.injEq] at hoc
+            rw [← hoc.1]
+            simpa using hb
+          | leaf l => simp [SOp.toOp] at hoc
+          | loop K b c => simp [SOp.toOp] at hoc
+          | switch G cs d => simp [SOp.toOp] at hoc
+        · simpa [writesL] using hw
+        · intro p hp t
+          rw [toCases_eq_map, List.mem_map] at hp
+          obtain ⟨⟨v, B⟩, hvB, rfl⟩ := hp
+          have := ih _ _ (hcs (v, B) hvB) D I t
+          rw [SOp.toOps_append, toOps_selectedS] at this
+          exact this
+      · simp at h
+    · unfold fpHead at h
+      split at h
+      · rename_i o T' o' P'
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+        obtain ⟨rfl, ht⟩ := h
+        simp only [SOp.toOps, denB]
+        exact ih _ _ ht D I _
+      · simp at h
+
 end Qlin.TV
+
 
 
 

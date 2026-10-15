@@ -88,7 +88,11 @@ with a bit write) in which both axioms are theorems.
 `lean/Qlin/CQGates.lean` proves the sink step in that model from the
 conjugation table, and that the measurement and reset Kraus operators
 sum to the identity. `lean/Qlin/CQDefer.lean` proves the direct defer
-rule with one control bit in that model. `lean/Qlin/Negative.lean` refutes each rule with
+rule with one control bit in that model. `lean/Qlin/Check.lean` is a
+translation-validation checker for compiled programs (M0 steps and fast-path
+dispatch), proved sound; `qlin tv-export` writes its jobs and
+`lean/QlinCheck.lean` runs it (`bench/run_tv.py` on every benchmark).
+`lean/Qlin/Negative.lean` refutes each rule with
 one side condition dropped.
 
 ```

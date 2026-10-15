@@ -354,7 +354,6 @@ fn tv_export(prog: &Program, file: &str, f: &Flags) -> Result<String, String> {
     } else {
         normal.clone()
     };
-    let recs = records(&base, SIM_LIMIT).map_err(|e| e.to_string())?;
     let mut jobs = vec![qlin::tv::job(
         &format!("{file} m0"),
         "m0",
@@ -362,6 +361,14 @@ fn tv_export(prog: &Program, file: &str, f: &Flags) -> Result<String, String> {
         &normal,
         &mut kinds,
     )];
+    // The fast path needs outcome records. Without them, only the M0 job.
+    let recs = match records(&base, SIM_LIMIT) {
+        Ok(r) => r,
+        Err(SimError::TooManyQubits(_)) => {
+            return serde_json::to_string(&jobs).map_err(|e| e.to_string())
+        }
+        Err(e) => return Err(e.to_string()),
+    };
     for t in 0..=f.t.unwrap_or(2) {
         let fp = fast_path(&base, &recs, &noise, t, f.size.unwrap_or(4096));
         let name = format!("{file} fp t={t}{}", if f.sink { " sink" } else { "" });

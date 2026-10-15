@@ -674,6 +674,13 @@ theorem toCases_eq_map (G : List Bit) (cs : List (List Bool × List SOp)) :
   | nil => simp [SOp.toCases]
   | cons p cs ih => obtain ⟨v, b⟩ := p; simp [SOp.toCases, ih]
 
+/-- The length of the longest prefix of `P` made of Ifs whose conditions
+read only bits of `G` and which write no bit of `G`. -/
+def groupLen (G : List Bit) (P : List SOp) : ℕ :=
+  (P.takeWhile fun o => match o with
+    | .ite c _ _ => decide (c.bits ⊆ G.toFinset) && decide (Disjoint G.toFinset (writesO o))
+    | _ => false).length
+
 /-- One dispatch: `T = [switch G cs P]`, `P` a group of Ifs on bits of `G`
 that writes no bit of `G`, then the rest, and `rec` accepts each case body
 against the arms its value selects, then the rest. -/
@@ -681,7 +688,9 @@ def fpSwitch (rec : List SOp → List SOp → Bool) (P T : List SOp) : Bool :=
   match T with
   | [.switch G cs dflt] =>
     decide (dflt = P) &&
-    (List.range (P.length + 1)).any fun i =>
+    -- The longest prefix of Ifs that can form a group comes first: that is
+    -- the group the Rust code builds. Any other split is also sound.
+    (groupLen G P :: List.range (P.length + 1)).any fun i =>
       (P.take i).all (fun o => match o with
         | .ite c _ _ => decide (c.bits ⊆ G.toFinset)
         | _ => false) &&

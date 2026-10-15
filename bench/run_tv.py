@@ -37,6 +37,9 @@ def main() -> int:
                 skipped.append(f"{bench} {' '.join(sink)}: {str(e).splitlines()[-1][:120]}")
                 continue
             batch = json.loads(out)
+            if len(batch) == 1:
+                skipped.append(f"{bench} {' '.join(sink)}: fast path not exported "
+                               "(no outcome records); M0 job only")
             # The M0 job is the same with and without the sink.
             jobs += batch if not sink else batch[1:]
     JOBS.write_text(json.dumps(jobs))

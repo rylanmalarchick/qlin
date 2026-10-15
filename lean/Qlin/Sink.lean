@@ -8,8 +8,9 @@ is disjoint from it (`sink_past_disjoint`) or is a Clifford gate on its
 qubits (`sink_past_clifford`). In the second case each arm is replaced
 by its conjugate. The conjugation facts come from `PauliTable.lean`:
 there `C * P = φ • P' * C` with `φ = ±1`, so as channels the arm `P`
-then `C` equals `C` then `P'`. That last step (Kraus operators equal up
-to a global phase give the same channel) is hand-checked.
+then `C` equals `C` then `P'`. That last step (a sign on a Kraus operator
+drops out of the channel) is proved in the cq model in `CQGates.lean`
+(`sink1_cq`, `sink2_cq`).
 -/
 
 namespace Qlin

@@ -1,0 +1,11 @@
+# Local gate for qlin (read by `verify`). Same steps as AGENTS.md and the
+# CI jobs fast and lean. The full certifiers (cargo test --release --
+# --ignored) stay in CI job full.
+set -euo pipefail
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test --quiet
+cargo build --release --quiet
+uv run --project bench pytest bench -q
+(cd lean && lake build)
+scripts/lean_axioms.sh | tail -1

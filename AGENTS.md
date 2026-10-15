@@ -21,7 +21,8 @@
   `benchmarks/SOURCES.txt` records origins and commits.
 - `tests/`: integration tests. `benchmarks/hand/`: hand-written programs.
 - `lean/`: Lean model and proofs (`Qlin/IR`, `Sem`, `Structure`, `M0`,
-  `FastPath`, `Sink`, `PauliTable`, `Latency`, `Negative`). `lean/Axioms.lean`
+  `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Negative`).
+  `CQ` is the density-matrix model of the leaf axioms. `lean/Axioms.lean`
   lists the theorems that `scripts/lean_axioms.sh` checks.
 - `notes/wolfram/`: Wolfram Language checks (`wolfram -script FILE`).
 

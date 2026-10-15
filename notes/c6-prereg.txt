@@ -1,0 +1,33 @@
+C6 rerun on ibm_kingston: analysis plan, fixed before any job runs
+==================================================================
+Written 2026-10-14, committed before the run.
+
+Question: is five_qubit_code best_defer faster per shot than source on
+ibm_kingston, by the 19 us that the block model predicts at the measured
+branch cost (3.45 us per if_else)?
+
+Design: 60 interleaved rounds. Each round runs one source job, then one
+best_defer job, 1000 shots each. One 100-shot smoke job first.
+Command: uv run --project bench python bench/run_phase4_ibm.py
+  --bench five_qubit_code --variants source,best_defer --repeats 60
+  --interleave --budget 300 --out phase4_ibm_five_qubit_n60
+Budget cap: 300 s of Open Plan time. If the cap stops the run early, the
+analysis uses the complete pairs that exist.
+
+Data: d_i = source - best_defer, per-shot time in us, round i. Only this
+run's pairs. The 2026-09-29 run (27 pairs) is reported apart, and a
+pooled result is secondary.
+
+Outlier rule (fixed now, from the 2026-09-29 run): drop pair i when
+|d_i| > 1000 us. Report how many pairs it drops.
+
+Primary analysis:
+  1. Mean of the kept d_i with a 95% t interval.
+  2. Two-sided one-sample t test of the kept d_i against 19 us.
+  3. Wilcoxon signed-rank test of all d_i (no outlier rule) against 0.
+Reading:
+  - The model ranking is confirmed if the interval in 1 excludes 0 on
+    the positive side.
+  - The model's size is rejected if test 2 gives p < 0.05.
+  - Otherwise the result is "not resolved".
+Shapiro-Wilk on the kept d_i is reported, as a check on test 2.

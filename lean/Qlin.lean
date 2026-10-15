@@ -6,4 +6,7 @@ import Qlin.FastPath
 import Qlin.Sink
 import Qlin.PauliTable
 import Qlin.Latency
+import Qlin.CQ
+import Qlin.CQGates
+import Qlin.CQDefer
 import Qlin.Negative

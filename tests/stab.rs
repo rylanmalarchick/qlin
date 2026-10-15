@@ -194,12 +194,10 @@ fn stab_matches_dense_from_product_states() {
         }
     }
     println!("runs {runs}");
-    // 96 of the 4 x 47 runs (benchmarks with at most 12 qubits). In the
-    // others a non-Clifford gate meets a qubit in superposition: the qft, qpe, and adder programs, ipe3,
-    // mbqc_chain4, and repeat-until-success, and the _noisy codes when the
-    // input puts the noise-source qubit outside |0> (a real run keeps it
-    // at |0>).
-    assert_eq!(runs, 96);
+    // 114 of the 4 x 47 runs (benchmarks with at most 12 qubits). In the
+    // others a non-Clifford gate meets an entangled qubit: the qft, qpe, iqpe,
+    // and adder programs, ipe3, mbqc_chain4, and repeat-until-success.
+    assert_eq!(runs, 114);
 }
 
 #[test]
@@ -343,4 +341,22 @@ fn stab_check_rejects_planted_errors() {
     assert!(equivalent_stab(&src1, &good, 8, 3, LIMIT).is_ok());
     let r = equivalent_stab(&src1, &bad, 8, 3, LIMIT);
     assert!(matches!(r, Err(CheckError::Mismatch { .. })), "{r:?}");
+}
+
+#[test]
+fn non_clifford_on_unentangled_qubit_matches_dense() {
+    // Qiskit O3's form of the noise source: sx, rz, sx, rz, measure. The
+    // first rz meets a Y eigenstate. Also an X eigenstate and a T gate.
+    let prog = parse(
+        "qubits 3\nbits 3\nh q1\ncx q1 q2\nreset q0\nsx q0\nrz(3.5926194653860555) q0\nsx q0\n\
+         rz(9.42477796076938) q0\nmeasure q0 -> c0\nif c0 { x q1 }\nh q0\nt q0\nh q0\n\
+         measure q0 -> c1\nif c1 { z q2 }\nmeasure q2 -> c2\n",
+    )
+    .unwrap();
+    for ks in [vec![0, 0, 0], vec![2, 0, 1], vec![4, 0, 0]] {
+        assert!(
+            compare(Path::new("non_clifford"), &prog, &ks),
+            "{ks:?}: unsupported"
+        );
+    }
 }

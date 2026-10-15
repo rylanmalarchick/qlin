@@ -7,7 +7,8 @@ Same model, variants, and gain as bench/run_phase3.py (block sync,
 HERON_LIKE, t_ff 600 ns, t_branch 0, 200, 1000). Records come from the
 stabilizer backend. Every fast-path and sink variant runs with --check,
 which uses the stabilizer check past 12 qubits. bqcp and Qiskit O3 outputs
-count only when `qlin check` finds them equal to the source. Programs that
+count only when `qlin check --random 0` finds them equal to the source
+from |0...0>, the input the Phase 1 guard uses. Programs that
 the stabilizer backend does not run are listed as skipped.
 """
 
@@ -30,7 +31,9 @@ def guarded(path: Path, text: str) -> tuple[str | None, str]:
     """`text` if `qlin check` finds it equal to the source, with the reason."""
     tmp = TMP / "phase7_baseline.qlin"
     tmp.write_text(text)
-    r = json.loads(qlin("check", str(path), str(tmp)))
+    # From |0...0> only, as the Phase 1 guard: bqcp propagates constants
+    # from that input and is not meant to agree on others.
+    r = json.loads(qlin("check", "--random", "0", str(path), str(tmp)))
     if r.get("equal") is True:
         return text, "checked"
     return None, r.get("why") or r.get("unsupported") or "not equal"
@@ -145,7 +148,7 @@ def _write(rows, skipped, notes, checked) -> None:
                     f"{r['best_baseline_is']} | {r['best_ours']:.0f} | {r['best_ours_is']} | "
                     f"{r['gain']:.1%} |")
         lines.append("")
-    lines += ["## Baselines (guarded by qlin check)", ""] + [f"- {n}" for n in notes] + [""]
+    lines += ["## Baselines (guarded by qlin check from |0...0>)", ""] + [f"- {n}" for n in notes] + [""]
     lines += ["## Skipped", ""] + [f"- {s}" for s in skipped]
     (RESULTS / "phase7_scale.md").write_text("\n".join(lines) + "\n")
 

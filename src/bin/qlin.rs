@@ -36,8 +36,9 @@ usage:
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
   qlin traces FILE.qlin                   every per-outcome trace as JSON
-  qlin check A.qlin B.qlin                compare B with A by simulation (dense up
-                                          to 12 qubits, stabilizer past that) as JSON
+  qlin check [--random N] A.qlin B.qlin   compare B with A by simulation (dense up
+                                          to 12 qubits, stabilizer past that) from
+                                          |0...0> and N random inputs (default 8)
   qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
@@ -441,10 +442,16 @@ fn run(args: &[String]) -> Result<String, String> {
             serde_json::to_string(&out).map_err(|e| e.to_string())
         }
         "check" => {
-            let [a, b] = rest else {
+            let (n_random, files) = match rest {
+                [flag, k, files @ ..] if flag == "--random" => {
+                    (k.parse().map_err(|_| format!("bad --random `{k}`"))?, files)
+                }
+                files => (8, files),
+            };
+            let [a, b] = files else {
                 return Err(USAGE.into());
             };
-            let out = match check(&load(a)?, &load(b)?, 8, 31, SIM_LIMIT) {
+            let out = match check(&load(a)?, &load(b)?, n_random, 31, SIM_LIMIT) {
                 Ok(Checked::Dense) => serde_json::json!({ "equal": true, "backend": "dense" }),
                 Ok(Checked::Stabilizer(k)) => {
                     serde_json::json!({ "equal": true, "backend": "stabilizer", "inputs": k })

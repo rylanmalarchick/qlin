@@ -4,9 +4,9 @@
 //! An Aaronson-Gottesman tableau (destabilizers and stabilizers with
 //! signs). Clifford gates act on the tableau, and rotations by a multiple
 //! of pi/2 count as Clifford. A non-Clifford one-qubit gate is allowed only
-//! on a qubit in a Z basis state, which is therefore unentangled. That
-//! qubit then holds a pending 2-vector until its next measurement or reset,
-//! which resolves it with the exact probabilities. This covers the error
+//! on an unentangled qubit (a Z, X, or Y eigenstate). That qubit then
+//! holds a pending 2-vector until its next measurement or reset, which
+//! resolves it with the exact probabilities. This covers the error
 //! source of the `_noisy` benchmarks (`ry`, then `measure`). Any other
 //! non-Clifford use is `SimError::Unsupported`.
 //!
@@ -189,6 +189,37 @@ impl Tableau {
         }
     }
 
+    /// When qubit `a` is unentangled, its one-qubit state, with the
+    /// tableau rotated so that `a` is in a Z basis state. A pure stabilizer
+    /// state leaves `a` unentangled iff `a` is a Z, X, or Y eigenstate.
+    fn lift_out(&mut self, a: usize) -> Option<[C; 2]> {
+        let r = std::f64::consts::FRAC_1_SQRT_2;
+        let sign = |o: bool| if o { -1.0 } else { 1.0 };
+        if self.random_pivot(a).is_none() {
+            let mut v = [C::new(0.0, 0.0); 2];
+            v[self.det_outcome(a) as usize] = C::new(1.0, 0.0);
+            return Some(v);
+        }
+        // X eigenstate: H maps |+> and |-> to |0> and |1>.
+        let mut t = self.clone();
+        t.h(a);
+        if t.random_pivot(a).is_none() {
+            let o = t.det_outcome(a);
+            *self = t;
+            return Some([C::new(r, 0.0), C::new(sign(o) * r, 0.0)]);
+        }
+        // Y eigenstate: Sdg then H maps |+i> and |-i> to |0> and |1>.
+        let mut t = self.clone();
+        t.s_pow(a, 3);
+        t.h(a);
+        if t.random_pivot(a).is_none() {
+            let o = t.det_outcome(a);
+            *self = t;
+            return Some([C::new(r, 0.0), C::new(0.0, sign(o) * r)]);
+        }
+        None
+    }
+
     /// Moves a pending qubit back into the tableau when its 2-vector is a
     /// Z basis state (up to phase). Fails otherwise.
     fn settle(&mut self, a: usize, name: &str) -> Result<(), SimError> {
@@ -305,15 +336,10 @@ impl QState for Tableau {
             }
             let m = matrix_1q(gate, params)
                 .ok_or_else(|| SimError::Unsupported(gate.name().to_string()))?;
-            if self.random_pivot(a).is_some() {
-                return Err(SimError::Unsupported(format!(
-                    "{} on an entangled qubit",
-                    gate.name()
-                )));
-            }
-            let mut basis = [C::new(0.0, 0.0); 2];
-            basis[self.det_outcome(a) as usize] = C::new(1.0, 0.0);
-            self.pending[a] = Some(mat_vec(&m, &basis));
+            let v = self.lift_out(a).ok_or_else(|| {
+                SimError::Unsupported(format!("{} on an entangled qubit", gate.name()))
+            })?;
+            self.pending[a] = Some(mat_vec(&m, &v));
             return Ok(());
         }
         for &a in &q {

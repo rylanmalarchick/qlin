@@ -24,17 +24,24 @@ which is the same for every circuit.
 
 ## Interpretation (2026-10-14, analysis fixed in notes/c6-prereg.txt)
 
-- Design: 60 interleaved rounds (source job, then best_defer job), 1000
-  shots each, one 100-shot smoke job first. All 60 rounds completed.
-- Analysis (bench/analyze_c6.py, outlier rule |d| > 1000 us fixed before
-  the run): 0 pairs dropped. Mean difference source - best_defer
-  21.06 us, SE 15.41, 95% CI -9.77 to 51.90 us. t test against the model's
-  19 us: p 0.89. Wilcoxon against 0: median -1.88 us, p 0.73.
-  Shapiro-Wilk on the differences: p < 0.0001.
-- Verdict by the plan: not resolved. The interval contains both 0 and the
-  model's 19 us. The 2026-09-29 run's weak hint that 19 us is too large
-  (p 0.046, post hoc outlier rule) does not hold here.
-- Pooled with the 2026-09-29 run (secondary, 87 pairs, 2 dropped): mean
-  14.00 us, 95% CI -8.52 to 36.53, not resolved.
-- Next design: notes/c6b-prereg.txt (the body repeated k times per
-  circuit, so the gap grows with k).
+Verdict: not resolved. The 95% interval of the gap contains both 0 and the
+model's 19 us.
+
+| quantity | this run (60 pairs) | pooled with 2026-09-29 (87 pairs) |
+|---|---|---|
+| pairs dropped (\|d\| > 1000 us) | 0 | 2 |
+| mean gap, source - best_defer (us) | 21.06 | 14.00 |
+| SE (us) | 15.41 | 11.33 |
+| 95% CI (us) | -9.77 to 51.90 | -8.52 to 36.53 |
+| t test against 19 us, p | 0.89 | 0.66 |
+| Wilcoxon against 0, p (median, us) | 0.73 (-1.88) | 0.66 (-1.90) |
+| Shapiro-Wilk on kept pairs, p | < 0.0001 | < 0.0001 |
+
+- Design: 60 interleaved rounds. Each round runs a source job, then a
+  best_defer job, with 1000 shots each. A 100-shot smoke job ran first.
+  All 60 rounds completed.
+- The 2026-09-29 run gave a weak hint that 19 us is too large (p 0.046,
+  post hoc outlier rule). This run does not repeat it.
+- The differences are not normal, so the t tests are weak evidence.
+- Next design: notes/c6b-prereg.txt. It repeats the program body k times
+  per circuit, so the gap grows with k.

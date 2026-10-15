@@ -83,13 +83,13 @@ fast-path step, the Pauli sink and its conjugation table, and that a
 hoist or merge step never increases replay latency (claim C1). Leaves are
 opaque. Their semantics is any additive map that satisfies two axioms,
 listed in `lean/Qlin/Sem.lean`. `lean/Qlin/CQ.lean` gives a concrete
-model on density matrices (gates and reset as Kraus maps, Z measurement
-with a bit write) in which both axioms are theorems.
-`lean/Qlin/CQGates.lean` proves the sink step in that model from the
-conjugation table, and that the measurement and reset Kraus operators
-sum to the identity. `lean/Qlin/CQDefer.lean` proves the direct defer
-rule with one control bit in that model. `lean/Qlin/Negative.lean` refutes each rule with
-one side condition dropped.
+model on density matrices. In it, gates and reset are Kraus maps, and a Z
+measurement writes a bit. Both axioms are theorems in this model.
+`lean/Qlin/CQGates.lean` proves the sink step in the model from the
+conjugation table. It also proves that the measurement and reset Kraus
+operators sum to the identity. `lean/Qlin/CQDefer.lean` proves the direct
+defer rule with one control bit. `lean/Qlin/Negative.lean` refutes each
+rule with one side condition dropped.
 
 ```
 cd lean

@@ -1,0 +1,1391 @@
+qubits 17
+bits 17
+x q0
+cx q0 q1
+cx q1 q2
+cx q2 q3
+cx q3 q4
+cx q4 q5
+cx q5 q6
+cx q6 q7
+cx q7 q8
+cx q0 q9
+cx q1 q9
+cx q1 q10
+cx q2 q10
+cx q2 q11
+cx q3 q11
+cx q3 q12
+cx q4 q12
+cx q4 q13
+cx q5 q13
+cx q5 q14
+cx q6 q14
+cx q6 q15
+cx q7 q15
+cx q7 q16
+cx q8 q16
+measure q9 -> c9
+measure q10 -> c10
+measure q11 -> c11
+measure q12 -> c12
+measure q13 -> c13
+measure q14 -> c14
+measure q15 -> c15
+measure q16 -> c16
+if c9 & !c10 & !c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+}
+if c9 & c10 & !c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q1
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q2
+}
+if c9 & !c10 & c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q2
+}
+if !c9 & c10 & c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q2
+}
+if c9 & c10 & c11 & !c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q2
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q2
+  x q3
+}
+if c9 & !c10 & !c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q3
+}
+if !c9 & c10 & !c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q2
+  x q3
+}
+if c9 & c10 & !c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q3
+}
+if !c9 & !c10 & c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q3
+}
+if c9 & !c10 & c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q3
+}
+if !c9 & c10 & c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q3
+}
+if c9 & c10 & c11 & c12 & !c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q3
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q5
+  x q6
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q3
+  x q4
+}
+if !c9 & c10 & !c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q2
+  x q3
+  x q4
+}
+if c9 & c10 & !c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q3
+  x q4
+}
+if !c9 & !c10 & c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q3
+  x q4
+}
+if c9 & !c10 & c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q3
+  x q4
+}
+if !c9 & c10 & c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q3
+  x q4
+}
+if c9 & c10 & c11 & !c12 & c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q3
+  x q4
+}
+if !c9 & !c10 & !c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q4
+}
+if c9 & !c10 & !c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q4
+}
+if !c9 & c10 & !c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q4
+}
+if c9 & c10 & !c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q4
+}
+if !c9 & !c10 & c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q2
+  x q4
+}
+if c9 & !c10 & c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q4
+}
+if !c9 & c10 & c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q2
+  x q4
+}
+if c9 & c10 & c11 & c12 & c13 & !c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q4
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q6
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q0
+  x q6
+  x q7
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q2
+  x q3
+  x q4
+  x q5
+}
+if c9 & c10 & !c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q1
+  x q6
+  x q7
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q3
+  x q4
+  x q5
+}
+if c9 & !c10 & c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q0
+  x q3
+  x q4
+  x q5
+}
+if !c9 & c10 & c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q2
+  x q6
+  x q7
+  x q8
+}
+if c9 & c10 & c11 & !c12 & !c13 & c14 & !c15 & !c16 {
+  x q1
+  x q3
+  x q4
+  x q5
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q4
+  x q5
+}
+if c9 & !c10 & !c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q0
+  x q4
+  x q5
+}
+if !c9 & c10 & !c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q4
+  x q5
+}
+if c9 & c10 & !c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q1
+  x q4
+  x q5
+}
+if !c9 & !c10 & c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q3
+  x q6
+  x q7
+  x q8
+}
+if c9 & !c10 & c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q4
+  x q5
+}
+if !c9 & c10 & c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q2
+  x q4
+  x q5
+}
+if c9 & c10 & c11 & c12 & !c13 & c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q4
+  x q5
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q5
+}
+if c9 & !c10 & !c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q5
+}
+if !c9 & c10 & !c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q5
+}
+if c9 & c10 & !c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q1
+  x q5
+}
+if !c9 & !c10 & c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q2
+  x q5
+}
+if c9 & !c10 & c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q5
+}
+if !c9 & c10 & c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q2
+  x q5
+}
+if c9 & c10 & c11 & !c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q5
+}
+if !c9 & !c10 & !c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q4
+  x q6
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q1
+  x q2
+  x q3
+  x q5
+}
+if !c9 & c10 & !c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q2
+  x q3
+  x q5
+}
+if c9 & c10 & !c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q2
+  x q3
+  x q5
+}
+if !c9 & !c10 & c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q3
+  x q5
+}
+if c9 & !c10 & c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q3
+  x q5
+}
+if !c9 & c10 & c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q0
+  x q1
+  x q3
+  x q5
+}
+if c9 & c10 & c11 & c12 & c13 & c14 & !c15 & !c16 {
+  x q1
+  x q3
+  x q5
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q0
+  x q7
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q7
+  x q8
+}
+if c9 & c10 & !c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q1
+  x q7
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q3
+  x q4
+  x q5
+  x q6
+}
+if c9 & !c10 & c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q1
+  x q2
+  x q7
+  x q8
+}
+if !c9 & c10 & c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q2
+  x q7
+  x q8
+}
+if c9 & c10 & c11 & !c12 & !c13 & !c14 & c15 & !c16 {
+  x q0
+  x q2
+  x q7
+  x q8
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q4
+  x q5
+  x q6
+}
+if c9 & !c10 & !c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q0
+  x q4
+  x q5
+  x q6
+}
+if !c9 & c10 & !c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q2
+  x q3
+  x q7
+  x q8
+}
+if c9 & c10 & !c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q1
+  x q4
+  x q5
+  x q6
+}
+if !c9 & !c10 & c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q3
+  x q7
+  x q8
+}
+if c9 & !c10 & c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q0
+  x q3
+  x q7
+  x q8
+}
+if !c9 & c10 & c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q2
+  x q4
+  x q5
+  x q6
+}
+if c9 & c10 & c11 & c12 & !c13 & !c14 & c15 & !c16 {
+  x q1
+  x q3
+  x q7
+  x q8
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q5
+  x q6
+}
+if c9 & !c10 & !c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q0
+  x q5
+  x q6
+}
+if !c9 & c10 & !c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q5
+  x q6
+}
+if c9 & c10 & !c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q1
+  x q5
+  x q6
+}
+if !c9 & !c10 & c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q3
+  x q4
+  x q7
+  x q8
+}
+if c9 & !c10 & c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q1
+  x q2
+  x q5
+  x q6
+}
+if !c9 & c10 & c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q2
+  x q5
+  x q6
+}
+if c9 & c10 & c11 & !c12 & c13 & !c14 & c15 & !c16 {
+  x q0
+  x q2
+  x q5
+  x q6
+}
+if !c9 & !c10 & !c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q4
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q0
+  x q4
+  x q7
+  x q8
+}
+if !c9 & c10 & !c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q2
+  x q3
+  x q5
+  x q6
+}
+if c9 & c10 & !c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q1
+  x q4
+  x q7
+  x q8
+}
+if !c9 & !c10 & c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q3
+  x q5
+  x q6
+}
+if c9 & !c10 & c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q0
+  x q3
+  x q5
+  x q6
+}
+if !c9 & c10 & c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q2
+  x q4
+  x q7
+  x q8
+}
+if c9 & c10 & c11 & c12 & c13 & !c14 & c15 & !c16 {
+  x q1
+  x q3
+  x q5
+  x q6
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q6
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q6
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q6
+}
+if c9 & c10 & !c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q1
+  x q6
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q2
+  x q6
+}
+if c9 & !c10 & c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q1
+  x q2
+  x q6
+}
+if !c9 & c10 & c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q2
+  x q6
+}
+if c9 & c10 & c11 & !c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q2
+  x q6
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q4
+  x q5
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q1
+  x q2
+  x q3
+  x q6
+}
+if !c9 & c10 & !c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q2
+  x q3
+  x q6
+}
+if c9 & c10 & !c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q2
+  x q3
+  x q6
+}
+if !c9 & !c10 & c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q3
+  x q6
+}
+if c9 & !c10 & c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q3
+  x q6
+}
+if !c9 & c10 & c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q3
+  x q6
+}
+if c9 & c10 & c11 & c12 & !c13 & c14 & c15 & !c16 {
+  x q1
+  x q3
+  x q6
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q5
+  x q7
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q0
+  x q5
+  x q7
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q2
+  x q3
+  x q4
+  x q6
+}
+if c9 & c10 & !c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q1
+  x q5
+  x q7
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q3
+  x q4
+  x q6
+}
+if c9 & !c10 & c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q0
+  x q3
+  x q4
+  x q6
+}
+if !c9 & c10 & c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q2
+  x q5
+  x q7
+  x q8
+}
+if c9 & c10 & c11 & !c12 & c13 & c14 & c15 & !c16 {
+  x q1
+  x q3
+  x q4
+  x q6
+}
+if !c9 & !c10 & !c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q4
+  x q6
+}
+if c9 & !c10 & !c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q0
+  x q4
+  x q6
+}
+if !c9 & c10 & !c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q0
+  x q1
+  x q4
+  x q6
+}
+if c9 & c10 & !c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q1
+  x q4
+  x q6
+}
+if !c9 & !c10 & c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q3
+  x q5
+  x q7
+  x q8
+}
+if c9 & !c10 & c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q1
+  x q2
+  x q4
+  x q6
+}
+if !c9 & c10 & c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q2
+  x q4
+  x q6
+}
+if c9 & c10 & c11 & c12 & c13 & c14 & c15 & !c16 {
+  x q0
+  x q2
+  x q4
+  x q6
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q8
+}
+if c9 & c10 & !c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q1
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q2
+  x q8
+}
+if c9 & !c10 & c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q1
+  x q2
+  x q8
+}
+if !c9 & c10 & c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q2
+  x q8
+}
+if c9 & c10 & c11 & !c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q2
+  x q8
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q4
+  x q5
+  x q6
+  x q7
+}
+if c9 & !c10 & !c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q1
+  x q2
+  x q3
+  x q8
+}
+if !c9 & c10 & !c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q2
+  x q3
+  x q8
+}
+if c9 & c10 & !c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q2
+  x q3
+  x q8
+}
+if !c9 & !c10 & c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q3
+  x q8
+}
+if c9 & !c10 & c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q3
+  x q8
+}
+if !c9 & c10 & c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q3
+  x q8
+}
+if c9 & c10 & c11 & c12 & !c13 & !c14 & !c15 & c16 {
+  x q1
+  x q3
+  x q8
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q5
+  x q6
+  x q7
+}
+if c9 & !c10 & !c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q0
+  x q5
+  x q6
+  x q7
+}
+if !c9 & c10 & !c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q2
+  x q3
+  x q4
+  x q8
+}
+if c9 & c10 & !c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q1
+  x q5
+  x q6
+  x q7
+}
+if !c9 & !c10 & c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q3
+  x q4
+  x q8
+}
+if c9 & !c10 & c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q0
+  x q3
+  x q4
+  x q8
+}
+if !c9 & c10 & c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q2
+  x q5
+  x q6
+  x q7
+}
+if c9 & c10 & c11 & !c12 & c13 & !c14 & !c15 & c16 {
+  x q1
+  x q3
+  x q4
+  x q8
+}
+if !c9 & !c10 & !c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q4
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q0
+  x q4
+  x q8
+}
+if !c9 & c10 & !c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q4
+  x q8
+}
+if c9 & c10 & !c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q1
+  x q4
+  x q8
+}
+if !c9 & !c10 & c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q3
+  x q5
+  x q6
+  x q7
+}
+if c9 & !c10 & c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q1
+  x q2
+  x q4
+  x q8
+}
+if !c9 & c10 & c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q2
+  x q4
+  x q8
+}
+if c9 & c10 & c11 & c12 & c13 & !c14 & !c15 & c16 {
+  x q0
+  x q2
+  x q4
+  x q8
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q6
+  x q7
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q0
+  x q6
+  x q7
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q6
+  x q7
+}
+if c9 & c10 & !c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q1
+  x q6
+  x q7
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q3
+  x q4
+  x q5
+  x q8
+}
+if c9 & !c10 & c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q1
+  x q2
+  x q6
+  x q7
+}
+if !c9 & c10 & c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q2
+  x q6
+  x q7
+}
+if c9 & c10 & c11 & !c12 & !c13 & c14 & !c15 & c16 {
+  x q0
+  x q2
+  x q6
+  x q7
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q4
+  x q5
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q0
+  x q4
+  x q5
+  x q8
+}
+if !c9 & c10 & !c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q2
+  x q3
+  x q6
+  x q7
+}
+if c9 & c10 & !c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q1
+  x q4
+  x q5
+  x q8
+}
+if !c9 & !c10 & c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q3
+  x q6
+  x q7
+}
+if c9 & !c10 & c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q0
+  x q3
+  x q6
+  x q7
+}
+if !c9 & c10 & c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q2
+  x q4
+  x q5
+  x q8
+}
+if c9 & c10 & c11 & c12 & !c13 & c14 & !c15 & c16 {
+  x q1
+  x q3
+  x q6
+  x q7
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q5
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q0
+  x q5
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q0
+  x q1
+  x q5
+  x q8
+}
+if c9 & c10 & !c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q1
+  x q5
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q3
+  x q4
+  x q6
+  x q7
+}
+if c9 & !c10 & c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q1
+  x q2
+  x q5
+  x q8
+}
+if !c9 & c10 & c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q2
+  x q5
+  x q8
+}
+if c9 & c10 & c11 & !c12 & c13 & c14 & !c15 & c16 {
+  x q0
+  x q2
+  x q5
+  x q8
+}
+if !c9 & !c10 & !c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q4
+  x q6
+  x q7
+}
+if c9 & !c10 & !c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q0
+  x q4
+  x q6
+  x q7
+}
+if !c9 & c10 & !c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q2
+  x q3
+  x q5
+  x q8
+}
+if c9 & c10 & !c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q1
+  x q4
+  x q6
+  x q7
+}
+if !c9 & !c10 & c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q3
+  x q5
+  x q8
+}
+if c9 & !c10 & c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q0
+  x q3
+  x q5
+  x q8
+}
+if !c9 & c10 & c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q2
+  x q4
+  x q6
+  x q7
+}
+if c9 & c10 & c11 & c12 & c13 & c14 & !c15 & c16 {
+  x q1
+  x q3
+  x q5
+  x q8
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q7
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q7
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q1
+  x q7
+}
+if c9 & c10 & !c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q1
+  x q7
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q1
+  x q2
+  x q7
+}
+if c9 & !c10 & c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q1
+  x q2
+  x q7
+}
+if !c9 & c10 & c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q2
+  x q7
+}
+if c9 & c10 & c11 & !c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q2
+  x q7
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q4
+  x q5
+  x q6
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q1
+  x q2
+  x q3
+  x q7
+}
+if !c9 & c10 & !c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q2
+  x q3
+  x q7
+}
+if c9 & c10 & !c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q2
+  x q3
+  x q7
+}
+if !c9 & !c10 & c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q3
+  x q7
+}
+if c9 & !c10 & c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q3
+  x q7
+}
+if !c9 & c10 & c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q0
+  x q1
+  x q3
+  x q7
+}
+if c9 & c10 & c11 & c12 & !c13 & !c14 & c15 & c16 {
+  x q1
+  x q3
+  x q7
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q5
+  x q6
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q0
+  x q5
+  x q6
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q2
+  x q3
+  x q4
+  x q7
+}
+if c9 & c10 & !c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q1
+  x q5
+  x q6
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q3
+  x q4
+  x q7
+}
+if c9 & !c10 & c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q0
+  x q3
+  x q4
+  x q7
+}
+if !c9 & c10 & c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q2
+  x q5
+  x q6
+  x q8
+}
+if c9 & c10 & c11 & !c12 & c13 & !c14 & c15 & c16 {
+  x q1
+  x q3
+  x q4
+  x q7
+}
+if !c9 & !c10 & !c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q4
+  x q7
+}
+if c9 & !c10 & !c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q0
+  x q4
+  x q7
+}
+if !c9 & c10 & !c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q0
+  x q1
+  x q4
+  x q7
+}
+if c9 & c10 & !c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q1
+  x q4
+  x q7
+}
+if !c9 & !c10 & c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q3
+  x q5
+  x q6
+  x q8
+}
+if c9 & !c10 & c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q1
+  x q2
+  x q4
+  x q7
+}
+if !c9 & c10 & c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q2
+  x q4
+  x q7
+}
+if c9 & c10 & c11 & c12 & c13 & !c14 & c15 & c16 {
+  x q0
+  x q2
+  x q4
+  x q7
+}
+if !c9 & !c10 & !c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q6
+  x q8
+}
+if c9 & !c10 & !c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q0
+  x q6
+  x q8
+}
+if !c9 & c10 & !c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q0
+  x q1
+  x q6
+  x q8
+}
+if c9 & c10 & !c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q1
+  x q6
+  x q8
+}
+if !c9 & !c10 & c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q3
+  x q4
+  x q5
+  x q7
+}
+if c9 & !c10 & c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q1
+  x q2
+  x q6
+  x q8
+}
+if !c9 & c10 & c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q2
+  x q6
+  x q8
+}
+if c9 & c10 & c11 & !c12 & !c13 & c14 & c15 & c16 {
+  x q0
+  x q2
+  x q6
+  x q8
+}
+if !c9 & !c10 & !c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q4
+  x q5
+  x q7
+}
+if c9 & !c10 & !c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q0
+  x q4
+  x q5
+  x q7
+}
+if !c9 & c10 & !c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q2
+  x q3
+  x q6
+  x q8
+}
+if c9 & c10 & !c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q1
+  x q4
+  x q5
+  x q7
+}
+if !c9 & !c10 & c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q3
+  x q6
+  x q8
+}
+if c9 & !c10 & c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q0
+  x q3
+  x q6
+  x q8
+}
+if !c9 & c10 & c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q2
+  x q4
+  x q5
+  x q7
+}
+if c9 & c10 & c11 & c12 & !c13 & c14 & c15 & c16 {
+  x q1
+  x q3
+  x q6
+  x q8
+}
+if !c9 & !c10 & !c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q5
+  x q7
+}
+if c9 & !c10 & !c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q0
+  x q5
+  x q7
+}
+if !c9 & c10 & !c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q0
+  x q1
+  x q5
+  x q7
+}
+if c9 & c10 & !c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q1
+  x q5
+  x q7
+}
+if !c9 & !c10 & c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q3
+  x q4
+  x q6
+  x q8
+}
+if c9 & !c10 & c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q1
+  x q2
+  x q5
+  x q7
+}
+if !c9 & c10 & c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q2
+  x q5
+  x q7
+}
+if c9 & c10 & c11 & !c12 & c13 & c14 & c15 & c16 {
+  x q0
+  x q2
+  x q5
+  x q7
+}
+if !c9 & !c10 & !c11 & c12 & c13 & c14 & c15 & c16 {
+  x q4
+  x q6
+  x q8
+}
+if c9 & !c10 & !c11 & c12 & c13 & c14 & c15 & c16 {
+  x q0
+  x q4
+  x q6
+  x q8
+}
+if !c9 & c10 & !c11 & c12 & c13 & c14 & c15 & c16 {
+  x q2
+  x q3
+  x q5
+  x q7
+}
+if c9 & c10 & !c11 & c12 & c13 & c14 & c15 & c16 {
+  x q1
+  x q4
+  x q6
+  x q8
+}
+if !c9 & !c10 & c11 & c12 & c13 & c14 & c15 & c16 {
+  x q3
+  x q5
+  x q7
+}
+if c9 & !c10 & c11 & c12 & c13 & c14 & c15 & c16 {
+  x q0
+  x q3
+  x q5
+  x q7
+}
+if !c9 & c10 & c11 & c12 & c13 & c14 & c15 & c16 {
+  x q2
+  x q4
+  x q6
+  x q8
+}
+if c9 & c10 & c11 & c12 & c13 & c14 & c15 & c16 {
+  x q1
+  x q3
+  x q5
+  x q7
+}
+measure q0 -> c0
+measure q1 -> c1
+measure q2 -> c2
+measure q3 -> c3
+measure q4 -> c4
+measure q5 -> c5
+measure q6 -> c6
+measure q7 -> c7
+measure q8 -> c8

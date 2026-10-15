@@ -29,3 +29,11 @@ benchmarks/dynamarq/*_noisy.qlin
   qubit is the noise source: ry, measure, `if e { x dI }`, reset, once per
   data qubit. Metrics use `qlin stats --noise-qubits LAST` so the
   injection ops do not count.
+
+benchmarks/qec/*.qlin
+  Output of bench/gen_repetition.py: repetition codes with d = 7, 9, 11
+  in dynamarq's construction (|1> and |+> inputs, one syndrome round,
+  minimum-weight lookup decoder). dynamarq supports only d = 3, 5. For
+  those, the generator's tables equal dynamarq's
+  (bench/test_gen_repetition.py). The _noisy variants use the same noise
+  insertion as benchmarks/dynamarq/*_noisy.qlin.

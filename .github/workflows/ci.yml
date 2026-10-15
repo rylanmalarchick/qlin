@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [defer, fastpath, m0, search, sink]
+        test: [defer, fastpath, m0, scale, search, sink]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

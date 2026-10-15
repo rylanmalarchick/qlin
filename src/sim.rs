@@ -17,13 +17,41 @@ pub const MAX_QUBITS: u32 = 12;
 /// Outcomes with probability at or below this are dropped.
 pub const PROB_EPS: f64 = 1e-14;
 
+/// A quantum state that the branch simulator runs on: the dense state
+/// vector here, or the stabilizer tableau of [`crate::stab`].
+pub trait QState: Clone {
+    fn apply(&mut self, gate: &Gate, qubits: &[Qubit], params: &[f64]) -> Result<(), SimError>;
+    /// Probability that qubit `q` reads 1.
+    fn prob_one(&self, q: Qubit) -> f64;
+    /// Projects qubit `q` onto `outcome`, which has probability `p > 0`.
+    fn collapse(&mut self, q: Qubit, outcome: bool, p: f64);
+    /// Applies X to qubit `q` (the second half of a reset).
+    fn flip(&mut self, q: Qubit);
+}
+
+impl QState for Vec<C> {
+    fn apply(&mut self, gate: &Gate, qubits: &[Qubit], params: &[f64]) -> Result<(), SimError> {
+        apply_gate(self, gate, qubits, params)
+    }
+    fn prob_one(&self, q: Qubit) -> f64 {
+        prob_one(self, q)
+    }
+    fn collapse(&mut self, q: Qubit, outcome: bool, p: f64) {
+        collapse(self, q, outcome, p)
+    }
+    fn flip(&mut self, q: Qubit) {
+        let x = matrix_1q(&Gate::X, &[]).expect("X has a matrix");
+        apply_controlled(self, &[], q, &x);
+    }
+}
+
 #[derive(Clone, Debug)]
-pub struct Branch {
+pub struct Branch<S = Vec<C>> {
     /// Measurement outcomes in order. Reset outcomes are not recorded.
     pub outcomes: Vec<(Bit, bool)>,
     pub bits: Vec<bool>,
     pub prob: f64,
-    pub state: Vec<C>,
+    pub state: S,
     /// True when a loop hit `max_iters` before its exit condition held.
     pub truncated: bool,
 }
@@ -63,7 +91,7 @@ pub fn basis_state(n: u32, index: usize) -> Vec<C> {
 }
 
 /// Sums branch probabilities by final classical bits.
-pub fn distribution(branches: &[Branch]) -> BTreeMap<Vec<bool>, f64> {
+pub fn distribution<S>(branches: &[Branch<S>]) -> BTreeMap<Vec<bool>, f64> {
     let mut out = BTreeMap::new();
     for b in branches {
         *out.entry(b.bits.clone()).or_insert(0.0) += b.prob;
@@ -71,13 +99,13 @@ pub fn distribution(branches: &[Branch]) -> BTreeMap<Vec<bool>, f64> {
     out
 }
 
-type M2 = [[C; 2]; 2];
+pub(crate) type M2 = [[C; 2]; 2];
 
 fn c(re: f64, im: f64) -> C {
     C::new(re, im)
 }
 
-fn matrix_1q(gate: &Gate, params: &[f64]) -> Option<M2> {
+pub(crate) fn matrix_1q(gate: &Gate, params: &[f64]) -> Option<M2> {
     let (o, z) = (c(1.0, 0.0), c(0.0, 0.0));
     let r = std::f64::consts::FRAC_1_SQRT_2;
     let half = |i: usize| params[i] / 2.0;
@@ -206,9 +234,9 @@ enum Cont<'a> {
 }
 
 #[derive(Clone)]
-struct Run<'a> {
+struct Run<'a, S> {
     conts: Vec<Cont<'a>>,
-    branch: Branch,
+    branch: Branch<S>,
 }
 
 /// Runs `prog` from `init` and returns every branch. Fails when there are
@@ -224,13 +252,53 @@ pub fn simulate(prog: &Program, init: &[C], limit: usize) -> Result<Vec<Branch>,
             got: init.len(),
         });
     }
+    simulate_state(prog, init.to_vec(), limit)
+}
+
+/// Runs `prog` from the state `init` on any [`QState`] and returns every
+/// branch. Fails when there are more than `limit` branches.
+pub fn simulate_state<S: QState>(
+    prog: &Program,
+    init: S,
+    limit: usize,
+) -> Result<Vec<Branch<S>>, SimError> {
+    drive(prog, init, limit, &mut None)
+}
+
+/// A source of uniform numbers in [0, 1), for sampled runs.
+pub type Uniform<'u> = &'u mut dyn FnMut() -> f64;
+
+/// `n` sampled runs of `prog` from `init`: at each measurement or reset
+/// the outcome is drawn with its probability, so each returned branch is
+/// one path, drawn with its path probability (kept in `prob`).
+pub fn sample_paths<S: QState>(
+    prog: &Program,
+    init: &S,
+    n: usize,
+    uniform: Uniform<'_>,
+) -> Result<Vec<Branch<S>>, SimError> {
+    let mut out = Vec::with_capacity(n);
+    let mut sampler = Some(uniform);
+    for _ in 0..n {
+        out.extend(drive(prog, init.clone(), 1, &mut sampler)?);
+    }
+    Ok(out)
+}
+
+/// Runs every branch, or one sampled path when `sampler` is set.
+fn drive<S: QState>(
+    prog: &Program,
+    init: S,
+    limit: usize,
+    sampler: &mut Option<Uniform<'_>>,
+) -> Result<Vec<Branch<S>>, SimError> {
     let mut work = vec![Run {
         conts: vec![Cont::Ops(&prog.body)],
         branch: Branch {
             outcomes: Vec::new(),
             bits: vec![false; prog.n_bits as usize],
             prob: 1.0,
-            state: init.to_vec(),
+            state: init,
             truncated: false,
         },
     }];
@@ -241,7 +309,7 @@ pub fn simulate(prog: &Program, init: &[C], limit: usize) -> Result<Vec<Branch>,
                 Cont::Ops([]) => {}
                 Cont::Ops([op, rest @ ..]) => {
                     run.conts.push(Cont::Ops(rest));
-                    step(op, &mut run, &mut work)?;
+                    step(op, &mut run, &mut work, sampler)?;
                 }
                 Cont::LoopTail {
                     body,
@@ -266,7 +334,7 @@ pub fn simulate(prog: &Program, init: &[C], limit: usize) -> Result<Vec<Branch>,
                     }
                 }
             }
-            if work.len() + done.len() >= limit {
+            if sampler.is_none() && work.len() + done.len() >= limit {
                 return Err(SimError::TooManyBranches { limit });
             }
         }
@@ -278,35 +346,52 @@ pub fn simulate(prog: &Program, init: &[C], limit: usize) -> Result<Vec<Branch>,
 /// Splits `run` on qubit `q`. If both outcomes are possible, `run` keeps
 /// outcome 0 and a clone with outcome 1 goes to `work`. Returns the outcome
 /// that `run` keeps.
-fn split<'a>(run: &mut Run<'a>, q: Qubit, work: &mut Vec<Run<'a>>) -> bool {
-    let p1 = prob_one(&run.branch.state, q);
+fn split<'a, S: QState>(
+    run: &mut Run<'a, S>,
+    q: Qubit,
+    work: &mut Vec<Run<'a, S>>,
+    sampler: &mut Option<Uniform<'_>>,
+) -> bool {
+    let p1 = run.branch.state.prob_one(q);
     let p0 = 1.0 - p1;
+    if let (Some(u), true) = (sampler.as_mut(), p0 > PROB_EPS && p1 > PROB_EPS) {
+        let outcome = u() < p1;
+        let p = if outcome { p1 } else { p0 };
+        run.branch.state.collapse(q, outcome, p);
+        run.branch.prob *= p;
+        return outcome;
+    }
     if p0 > PROB_EPS && p1 > PROB_EPS {
         let mut one = run.clone();
-        collapse(&mut one.branch.state, q, true, p1);
+        one.branch.state.collapse(q, true, p1);
         one.branch.prob *= p1;
         work.push(one);
-        collapse(&mut run.branch.state, q, false, p0);
+        run.branch.state.collapse(q, false, p0);
         run.branch.prob *= p0;
         false
     } else {
         let outcome = p1 > PROB_EPS;
         let p = if outcome { p1 } else { p0 };
-        collapse(&mut run.branch.state, q, outcome, p);
+        run.branch.state.collapse(q, outcome, p);
         outcome
     }
 }
 
-fn step<'a>(op: &'a Op, run: &mut Run<'a>, work: &mut Vec<Run<'a>>) -> Result<(), SimError> {
+fn step<'a, S: QState>(
+    op: &'a Op,
+    run: &mut Run<'a, S>,
+    work: &mut Vec<Run<'a, S>>,
+    sampler: &mut Option<Uniform<'_>>,
+) -> Result<(), SimError> {
     match op {
         Op::Gate {
             gate,
             qubits,
             params,
-        } => apply_gate(&mut run.branch.state, gate, qubits, params)?,
+        } => run.branch.state.apply(gate, qubits, params)?,
         Op::Measure { q, b } => {
             let before = work.len();
-            let outcome = split(run, *q, work);
+            let outcome = split(run, *q, work, sampler);
             if work.len() > before {
                 let one = work.last_mut().expect("split pushed a branch");
                 one.branch.bits[b.0 as usize] = true;
@@ -317,14 +402,13 @@ fn step<'a>(op: &'a Op, run: &mut Run<'a>, work: &mut Vec<Run<'a>>) -> Result<()
         }
         Op::Reset { q } => {
             let before = work.len();
-            let x = matrix_1q(&Gate::X, &[]).expect("X has a matrix");
-            let outcome = split(run, *q, work);
+            let outcome = split(run, *q, work, sampler);
             if work.len() > before {
                 let one = work.last_mut().expect("split pushed a branch");
-                apply_controlled(&mut one.branch.state, &[], *q, &x);
+                one.branch.state.flip(*q);
             }
             if outcome {
-                apply_controlled(&mut run.branch.state, &[], *q, &x);
+                run.branch.state.flip(*q);
             }
         }
         Op::If { cond, then_, else_ } => {

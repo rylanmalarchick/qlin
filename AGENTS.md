@@ -8,6 +8,8 @@
 - `src/analysis/`: def-use over bits and dynamic-core marking.
 - `src/trace.rs`: per-outcome trace enumerator.
 - `src/sim.rs`: dense state-vector simulator, test oracle only.
+  `src/stab.rs`: stabilizer tableau backend, used past 12 qubits.
+  `src/tv.rs`: export of translation-validation jobs for the Lean checker.
 - `src/import/jeff.rs`: jeff importer (partial evaluation of the classical part).
 - `src/stats.rs`: metrics for the baseline table. `src/bin/qlin.rs`: CLI.
 - `src/cost.rs`: cost model. `src/latency.rs`: outcome records and replay latency.
@@ -21,7 +23,9 @@
   `benchmarks/SOURCES.txt` records origins and commits.
 - `tests/`: integration tests. `benchmarks/hand/`: hand-written programs.
 - `lean/`: Lean model and proofs (`Qlin/IR`, `Sem`, `Structure`, `M0`,
-  `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Negative`).
+  `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Check`, `Negative`).
+  `Check` holds the translation-validation checkers. `lean/QlinCheck.lean`
+  runs them: `lake env lean --run QlinCheck.lean JOBS.json`.
   `CQ` is the density-matrix model of the leaf axioms. `lean/Axioms.lean`
   lists the theorems that `scripts/lean_axioms.sh` checks.
 - `notes/wolfram/`: Wolfram Language checks (`wolfram -script FILE`).
@@ -43,11 +47,16 @@
 - Gate angles are constants. A bit-dependent angle is an `If`.
 - Bit constant folding uses only bits with a known classical value. It
   never infers a bit value from a quantum state.
-- The simulator rejects programs with more than 12 qubits.
+- The dense simulator rejects programs with more than 12 qubits. Past 12,
+  `check::check` and `latency::records` use the stabilizer backend. It runs
+  Clifford programs and one-qubit non-Clifford gates on unentangled qubits.
+  The callers report other programs as skipped.
 - After changing the importer or the printer, regenerate `benchmarks/jeff/*.qlin`.
   `tests/import_jeff.rs` fails on any drift.
-- Latency, the search, and the checks need exact simulation: 12 qubits at most,
-  including defer copy qubits. Larger cases are reported as skipped or unchecked.
+- Latency, the search, and the checks need exact simulation: dense up to 12
+  qubits (including defer copy qubits), stabilizer past that. Programs
+  neither backend runs are reported as skipped or unchecked.
+  `qlin lat --sample N` estimates latency when the records are too many.
 - Some tests pin exact counts (benchmarks certified, variants checked). A new
   benchmark changes them. Update the pinned number and its comment together.
 - Selene streams results over a local socket: consume each shot's results

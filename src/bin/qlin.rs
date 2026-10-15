@@ -3,13 +3,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
-use qlin::check::{equivalent, inputs};
+use qlin::check::{check, CheckError, Checked};
 use qlin::cost::{CostModel, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
-use qlin::latency::{expected, records, Expected, Noise};
+use qlin::latency::{expected, records, sampled_records, Expected, Noise, Record};
 use qlin::search::{Problem, SearchError};
-use qlin::sim::{basis_state, simulate};
+use qlin::sim::{basis_state, simulate, SimError};
 use qlin::stats::stats_with_noise;
 use qlin::text::{format_leaf, parse, print};
 use qlin::trace::enumerate;
@@ -36,6 +36,13 @@ usage:
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
   qlin traces FILE.qlin                   every per-outcome trace as JSON
+  qlin tv-export [--t T] [--sink] [--noise-qubits I,J] FILE.qlin
+                                          translation-validation jobs for
+                                          lean/QlinCheck.lean: source -> M0 normal
+                                          form, base -> fast path for t = 0..T (default 2)
+  qlin check [--random N] A.qlin B.qlin   compare B with A by simulation (dense up
+                                          to 12 qubits, stabilizer past that) from
+                                          |0...0> and N random inputs (default 8)
   qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
@@ -68,6 +75,9 @@ struct Flags {
     gates: [Option<f64>; 3],
     /// Grid for `sweep`: t_meas, t_ff, t_branch values.
     grid: [Vec<f64>; 3],
+    /// `lat --sample N --seed S`: Monte Carlo over N sampled records.
+    sample: Option<usize>,
+    seed: Option<u64>,
 }
 
 impl Flags {
@@ -144,7 +154,7 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
             }
             Some(
                 flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t1q" | "--t2q" | "--treset" | "--t"
-                | "--size" | "--model"),
+                | "--size" | "--model" | "--sample" | "--seed"),
             ) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
@@ -157,6 +167,8 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                     "--tbranch" => f.tbranch = Some(v.parse().map_err(|_| bad())?),
                     "--t" => f.t = Some(v.parse().map_err(|_| bad())?),
                     "--size" => f.size = Some(v.parse().map_err(|_| bad())?),
+                    "--sample" => f.sample = Some(v.parse().map_err(|_| bad())?),
+                    "--seed" => f.seed = Some(v.parse().map_err(|_| bad())?),
                     _ => {
                         f.block = match v.as_str() {
                             "block" => true,
@@ -310,6 +322,61 @@ fn lat(prog: &Program, f: &Flags) -> Result<Expected, String> {
     .map_err(|e| e.to_string())
 }
 
+/// Monte Carlo expected latency over `n` sampled records, with the
+/// standard error of the mean.
+fn sampled_lat(prog: &Program, f: &Flags, n: usize, seed: u64) -> Result<String, String> {
+    let recs = sampled_records(prog, n, seed).map_err(|e| e.to_string())?;
+    let (cost, noise, none) = (f.cost()?, Noise::new(prog, &f.noise), BTreeSet::new());
+    let mut lats = Vec::with_capacity(recs.len());
+    for r in &recs {
+        let one = Record {
+            prob: 1.0,
+            ..r.clone()
+        };
+        let e = expected(prog, &[one], &cost, &noise, &none).map_err(|e| e.to_string())?;
+        lats.push((r.prob, e.mean));
+    }
+    let mean: f64 = lats.iter().map(|(w, l)| w * l).sum();
+    let var: f64 = lats.iter().map(|(w, l)| w * (l - mean).powi(2)).sum();
+    let se = (var / (n as f64 - 1.0).max(1.0)).sqrt();
+    Ok(serde_json::json!({ "mean": mean, "se": se, "samples": n, "seed": seed }).to_string())
+}
+
+/// The M0 job (source to normal form) and one fast-path job per t (the
+/// normal form, or its sink, to the fast path). The sink step itself is
+/// not a job: its rule is in Lean, the Rust sink is checked by simulation.
+fn tv_export(prog: &Program, file: &str, f: &Flags) -> Result<String, String> {
+    let mut kinds = qlin::tv::Kinds::default();
+    let normal = normal_form(prog);
+    let noise = Noise::new(&normal, &f.noise);
+    let base = if f.sink {
+        sink(&normal, &noise).prog
+    } else {
+        normal.clone()
+    };
+    let mut jobs = vec![qlin::tv::job(
+        &format!("{file} m0"),
+        "m0",
+        prog,
+        &normal,
+        &mut kinds,
+    )];
+    // The fast path needs outcome records. Without them, only the M0 job.
+    let recs = match records(&base, SIM_LIMIT) {
+        Ok(r) => r,
+        Err(SimError::TooManyQubits(_)) => {
+            return serde_json::to_string(&jobs).map_err(|e| e.to_string())
+        }
+        Err(e) => return Err(e.to_string()),
+    };
+    for t in 0..=f.t.unwrap_or(2) {
+        let fp = fast_path(&base, &recs, &noise, t, f.size.unwrap_or(4096));
+        let name = format!("{file} fp t={t}{}", if f.sink { " sink" } else { "" });
+        jobs.push(qlin::tv::job(&name, "fp", &base, &fp.prog, &mut kinds));
+    }
+    serde_json::to_string(&jobs).map_err(|e| e.to_string())
+}
+
 /// Normal form, optional sink, then the fast path.
 fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
     let cost = f.cost()?;
@@ -329,10 +396,12 @@ fn fastpath(prog: &Program, f: &Flags) -> Result<String, String> {
         f.t.unwrap_or(1),
         f.size.unwrap_or(4096),
     );
-    let checked = if f.check && prog.n_qubits <= qlin::sim::MAX_QUBITS {
-        equivalent(prog, &fp.prog, &inputs(prog.n_qubits, 8, 31), SIM_LIMIT)
-            .map_err(|e| format!("fast path failed the equivalence check: {e}"))?;
-        true
+    let checked = if f.check {
+        match check(prog, &fp.prog, 8, 31, SIM_LIMIT) {
+            Ok(_) => true,
+            Err(CheckError::Sim(SimError::TooManyQubits(_))) => false,
+            Err(e) => return Err(format!("fast path failed the equivalence check: {e}")),
+        }
     } else {
         false
     };
@@ -411,9 +480,41 @@ fn run(args: &[String]) -> Result<String, String> {
                 .collect();
             serde_json::to_string(&out).map_err(|e| e.to_string())
         }
+        "tv-export" => {
+            let (file, f) = flags(rest)?;
+            tv_export(&load(file)?, file, &f)
+        }
+        "check" => {
+            let (n_random, files) = match rest {
+                [flag, k, files @ ..] if flag == "--random" => {
+                    (k.parse().map_err(|_| format!("bad --random `{k}`"))?, files)
+                }
+                files => (8, files),
+            };
+            let [a, b] = files else {
+                return Err(USAGE.into());
+            };
+            let out = match check(&load(a)?, &load(b)?, n_random, 31, SIM_LIMIT) {
+                Ok(Checked::Dense) => serde_json::json!({ "equal": true, "backend": "dense" }),
+                Ok(Checked::Stabilizer(k)) => {
+                    serde_json::json!({ "equal": true, "backend": "stabilizer", "inputs": k })
+                }
+                Err(CheckError::Sim(SimError::TooManyQubits(n))) => {
+                    serde_json::json!({ "equal": null, "unsupported": format!("{n} qubits, not a stabilizer program") })
+                }
+                Err(e @ CheckError::Mismatch { .. }) | Err(e @ CheckError::Shape(_)) => {
+                    serde_json::json!({ "equal": false, "why": e.to_string() })
+                }
+                Err(e) => return Err(e.to_string()),
+            };
+            Ok(out.to_string())
+        }
         "lat" => {
             let (file, f) = flags(rest)?;
-            serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string())
+            match f.sample {
+                None => serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string()),
+                Some(n) => sampled_lat(&load(file)?, &f, n, f.seed.unwrap_or(1)),
+            }
         }
         "sim" => {
             let [file] = rest else {

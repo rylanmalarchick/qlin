@@ -99,20 +99,29 @@ stabilizer check: 196 variants (a failure stops the run).
 
 ## Interpretation (2026-10-14)
 
-- Noiseless codes: from |0...0> every syndrome is 0, so bqcp removes every
-  correction and wins (as in Phase 1). Read the QEC results on the _noisy
+Finding: with no assumed branch overhead (t_branch = 0), the Pauli sink
+beats the best baseline on the four noisy |+> codes (modeled).
+
+| benchmark | gain at t_branch = 0 | best baseline |
+|---|---|---|
+| repetition7_1_noisy | 12.2% | source |
+| repetition9_1_noisy | 14.3% | source |
+| repetition11_1_noisy | 16.0% | source |
+| steane_noisy | 14.3% | source |
+| repetition7_0_noisy | -2.2% | bqcp |
+| repetition9_0_noisy | -2.0% | bqcp |
+| repetition11_0_noisy | -1.9% | bqcp |
+
+- On the |+> codes, the corrections pass the unencoding Cliffords. The
+  gain grows with d: 9.5% at d = 5 (Phase 3), then 12.2, 14.3, and 16.0%.
+- Noiseless codes: from |0...0> every syndrome is 0. bqcp removes every
+  correction and wins, as in Phase 1. Read the QEC results on the _noisy
   variants only.
-- t_branch = 0 (no assumed branch overhead): the Pauli sink beats the best
-  baseline by 12.2% (repetition7_1_noisy), 14.3% (repetition9_1_noisy),
-  16.0% (repetition11_1_noisy), and 14.3% (steane_noisy), modeled. These
-  are the |+> codes, where corrections pass the unencoding Cliffords. On
-  the _0_noisy codes bqcp is 1.9 to 2.2% faster than ours. The gain at
-  t_branch = 0 grows with d (repetition5_1_noisy: 9.5% in Phase 3).
-- t_branch = 200 and 1000 ns: 33 to 99.5%. The source's lookup decoder
-  has one If per syndrome value (63, 255, 1023 for d = 7, 9, 11), and a
-  serial controller pays t_branch for each. The gain is as large as that
-  decoder form and as real as t_branch (one measurement, 3.45 us, CI 0.32
-  to 6.58, Phase 4).
-- bqcp was not combined with ours here (bqcp as a pre-pass, then the fast
-  path). steane and steane_noisy Qiskit O3 outputs are not stabilizer
-  programs in the backend's sense and are missing as baselines.
+- At t_branch = 200 and 1000 ns the gains are 33 to 99.5%. The source's
+  lookup decoder has one If per syndrome value: 63, 255, and 1023 for
+  d = 7, 9, 11. A serial controller pays t_branch for each If.
+- That gain depends on the decoder form and on t_branch. t_branch has one
+  measurement: 3.45 us, 95% CI 0.32 to 6.58 (Phase 4).
+- Not done here: bqcp as a pre-pass before the fast path. The steane and
+  steane_noisy Qiskit O3 outputs do not run on the stabilizer backend, so
+  they are missing as baselines.

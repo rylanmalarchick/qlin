@@ -1,10 +1,10 @@
 # Phase 7.3 results: translation validation in Lean
 
-Every job runs the Lean checkers of lean/Qlin/Check.lean (checkBlock for
-source to M0 normal form, checkFP for normal form or sink to fast path,
-t = 0, 1, 2). A passing job is covered by checkBlock_sound or
-checkFP_sound (standard axioms only). The sink step itself is checked by
-simulation, not here.
+Every job runs a Lean checker of lean/Qlin/Check.lean. checkBlock checks
+source to M0 normal form. checkFP checks normal form (or its sink) to
+fast path, for t = 0, 1, 2. checkBlock_sound and checkFP_sound cover a
+passing job (standard axioms only). Simulation checks the sink step
+itself, not this run.
 
 - 428 of 428 jobs checked
 - Jobs not passing: 0

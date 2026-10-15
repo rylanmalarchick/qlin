@@ -24,8 +24,8 @@
 - `tests/`: integration tests. `benchmarks/hand/`: hand-written programs.
 - `lean/`: Lean model and proofs (`Qlin/IR`, `Sem`, `Structure`, `M0`,
   `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Check`, `Negative`).
-  `Check` is the translation-validation checker; `lean/QlinCheck.lean` runs it
-  with `lake env lean --run QlinCheck.lean JOBS.json`.
+  `Check` holds the translation-validation checkers. `lean/QlinCheck.lean`
+  runs them: `lake env lean --run QlinCheck.lean JOBS.json`.
   `CQ` is the density-matrix model of the leaf axioms. `lean/Axioms.lean`
   lists the theorems that `scripts/lean_axioms.sh` checks.
 - `notes/wolfram/`: Wolfram Language checks (`wolfram -script FILE`).
@@ -48,9 +48,9 @@
 - Bit constant folding uses only bits with a known classical value. It
   never infers a bit value from a quantum state.
 - The dense simulator rejects programs with more than 12 qubits. Past 12,
-  `check::check` and `latency::records` use the stabilizer backend, which
-  runs Clifford programs plus one-qubit non-Clifford gates on unentangled
-  qubits; other programs are reported as skipped.
+  `check::check` and `latency::records` use the stabilizer backend. It runs
+  Clifford programs and one-qubit non-Clifford gates on unentangled qubits.
+  The callers report other programs as skipped.
 - After changing the importer or the printer, regenerate `benchmarks/jeff/*.qlin`.
   `tests/import_jeff.rs` fails on any drift.
 - Latency, the search, and the checks need exact simulation: dense up to 12

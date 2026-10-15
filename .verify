@@ -6,6 +6,8 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test --quiet
 cargo build --release --quiet
-uv run --project bench pytest bench -q
+# Lean first: bench/test_tv.py runs the Lean checker, which needs the
+# built Qlin.Check module.
 (cd lean && lake build)
 scripts/lean_axioms.sh | tail -1
+uv run --project bench pytest bench -q

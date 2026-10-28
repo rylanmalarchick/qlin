@@ -7,6 +7,8 @@ Run: cargo build --release, then
      ... --bench five_qubit --variants source,best_defer              # a subset only
      ... --repeats 27 --interleave   # N jobs per variant, one per variant per round
      ... --copies 1,2,4,8            # each variant also with its body run k times
+     ... --interleave --submit-ahead # submit every round at once, then collect in order
+     ... --smoke-job ID              # use an already submitted smoke job
 Before any device job, each transpiled circuit is simulated on Aer and must
 match qlin's output distribution (an offline smoke test).
      uv run --project bench python bench/run_phase4_ibm.py --dry-run  # offline
@@ -21,6 +23,10 @@ nested if/else chain, and the model scores that same chain. It runs on
 ibm_kingston, only on an Open Plan instance (checked before any job), and
 stops once IBM's usage counter shows BUDGET_S seconds used by this run. The dry
 run transpiles for FakeKingston and submits nothing.
+
+With --submit-ahead, the interleaved rounds are submitted in their order in one
+pass after the smoke job, and the results are collected in the same order. The
+queue waits then overlap. The budget is checked once, before the submission.
 """
 
 from __future__ import annotations
@@ -46,6 +52,9 @@ SMOKE_SHOTS = 100
 MIN_REMAINING_S = 60
 # Sampled records per model prediction of a repeated program (--copies).
 MODEL_SAMPLES = 2000
+# The login token expires during long queue waits (401). Log in again, at
+# most this many times per job.
+AUTH_RETRIES = 20
 # The device the HERON_KINGSTON preset comes from.
 BACKEND = "ibm_kingston"
 
@@ -163,7 +172,8 @@ def aer_matches(circ, qtext: str) -> str | None:
 
 def main(dry: bool, probe: bool = False, bench: str | None = None,
          only: set[str] | None = None, out: str | None = None,
-         interleave: bool = False, copies: list[int] | None = None) -> int:
+         interleave: bool = False, copies: list[int] | None = None,
+         ahead: bool = False, smoke_job: str | None = None) -> int:
     copies = copies or [1]
     RESULTS.mkdir(exist_ok=True)
     if dry:
@@ -193,6 +203,7 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
         start_consumed = usage.get("usage_consumed_seconds", 0)
         backend = service.backend(BACKEND)
     cal = calibration(backend)
+    svc = {"service": service, "backend": backend}
     flags = model_flags(cal)
     rows: list[dict] = []
 
@@ -203,32 +214,55 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
         counts as a reset, and the new value is time spent since then."""
         if dry:
             return False
-        now = service.usage().get("usage_consumed_seconds", 0)
+        now = svc["service"].usage().get("usage_consumed_seconds", 0)
         spent["used"] += now - spent["last"] if now >= spent["last"] else now
         spent["last"] = now
         return spent["used"] < BUDGET_S
 
     smoked: set[str] = set()
 
+    def login() -> None:
+        from qiskit_ibm_runtime import QiskitRuntimeService
+        svc["service"] = QiskitRuntimeService()
+        svc["backend"] = svc["service"].backend(BACKEND)
+
+    def submit(circ, shots: int) -> str:
+        from qiskit_ibm_runtime import SamplerV2
+        return SamplerV2(mode=svc["backend"]).run([circ], shots=shots).job_id()
+
+    def collect(jid: str, shots: int) -> tuple[float | None, str | None]:
+        """Per-shot ns from the execution spans of job jid, and a failure reason."""
+        from qiskit_ibm_runtime.exceptions import IBMNotAuthorizedError, RuntimeJobFailureError
+        for _ in range(AUTH_RETRIES):
+            try:
+                res = svc["service"].job(jid).result()
+                break
+            except IBMNotAuthorizedError:
+                login()
+            except RuntimeJobFailureError as e:
+                return None, str(e).splitlines()[0][:200]
+        else:
+            raise SystemExit(f"job {jid}: login failed {AUTH_RETRIES} times")
+        spans = res.metadata["execution"]["execution_spans"]
+        return sum((sp.stop - sp.start).total_seconds() for sp in spans) / shots * 1e9, None
+
     def one_job(circ, shots: int) -> tuple[float | None, str, str | None]:
         """Per-shot ns from the execution spans, the job id, and a failure reason."""
-        from qiskit_ibm_runtime import SamplerV2
-        from qiskit_ibm_runtime.exceptions import RuntimeJobFailureError
-        job = SamplerV2(mode=backend).run([circ], shots=shots)
-        try:
-            res = job.result()
-        except RuntimeJobFailureError as e:
-            return None, job.job_id(), str(e).splitlines()[0][:200]
-        spans = res.metadata["execution"]["execution_spans"]
-        return sum((sp.stop - sp.start).total_seconds() for sp in spans) / shots * 1e9, job.job_id(), None
+        jid = submit(circ, shots)
+        t, why = collect(jid, shots)
+        return t, jid, why
 
     def smoke(circ, bench_path: str, row: dict) -> str | None:
         """The first circuit of each benchmark runs a SMOKE_SHOTS job first."""
         if bench_path in smoked:
             return None
-        if not budget_left():
+        if smoke_job is None and not budget_left():
             return "budget reached"
-        _, jid, why = one_job(circ, SMOKE_SHOTS)
+        if smoke_job is None:
+            _, jid, why = one_job(circ, SMOKE_SHOTS)
+        else:
+            jid = smoke_job
+            _, why = collect(jid, SMOKE_SHOTS)
         row["jobs"].append(jid)
         if why:
             return "smoke job failed: " + why[:180]
@@ -256,6 +290,9 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
             row["why"] = smoke(circ, bench_path, row)
             if row["why"] is None:
                 live.append((row, circ))
+        if ahead:
+            measure_ahead(live)
+            return
         for _ in range(REPEATS):
             for row, circ in live:
                 if row["why"] is not None:
@@ -270,6 +307,28 @@ def main(dry: bool, probe: bool = False, bench: str | None = None,
                     row["times"].append(t)
             save()
             print("round", [len(r["times"]) for r, _ in live], flush=True)
+
+    def measure_ahead(live: list[tuple[dict, object]]) -> None:
+        """The rounds of measure_interleaved, all submitted before any result is read."""
+        login()  # the smoke job's queue wait can outlast the login token
+        if not budget_left():
+            for row, _ in live:
+                row["why"] = "budget reached"
+            return
+        order = [(row, submit(circ, SHOTS)) for _ in range(REPEATS) for row, circ in live]
+        for row, jid in order:
+            row["jobs"].append(jid)
+        save()
+        print("submitted", len(order), flush=True)
+        for i, (row, jid) in enumerate(order):
+            # A failed job ends its row, as in the sequential rounds.
+            if row["why"] is None:
+                t, row["why"] = collect(jid, SHOTS)
+                if row["why"] is None:
+                    row["times"].append(t)
+            if (i + 1) % len(live) == 0:
+                save()
+                print("round", [len(r["times"]) for r, _ in live], flush=True)
 
     def save() -> None:
         _write(rows, backend.name, cal, dry, out)
@@ -393,4 +452,5 @@ if __name__ == "__main__":
     sys.exit(main("--dry-run" in sys.argv, probe="--probe" in sys.argv,
                   bench=arg("--bench"), only=only, out=arg("--out"),
                   interleave="--interleave" in sys.argv,
-                  copies=[int(k) for k in arg("--copies").split(",")] if arg("--copies") else None))
+                  copies=[int(k) for k in arg("--copies").split(",")] if arg("--copies") else None,
+                  ahead="--submit-ahead" in sys.argv, smoke_job=arg("--smoke-job")))

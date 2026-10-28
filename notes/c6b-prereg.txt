@@ -40,3 +40,22 @@ Reading:
   - The model's size is rejected if test 2 gives p < 0.05.
   - Otherwise "not resolved".
 Shapiro-Wilk on g_r is reported, as a check on the t tests.
+
+Amendment, 2026-10-28, before any C6b job ran
+  The ibm_kingston queue held each job for hours. The first smoke job
+  waited 2.5 h, and the runner then stopped on an expired login token
+  (401). At that rate the 121 sequential jobs take days.
+  Change: the runner submits all 15 rounds in one pass after the smoke
+  job, in the order above, and reads the results in the same order
+  (bench/run_phase4_ibm.py --submit-ahead). On a 401 it logs in again.
+  The smoke job is the one already queued at 16:34 UTC
+  (dbh281hq260s73bubfr0, --smoke-job).
+  Unchanged: the circuits, the job order, the shots, the outlier rule,
+  and the analysis.
+  Changed: the budget is checked once, before the submission, not before
+  each job. The hard stop is the plan limit (358 s left). The jobs of
+  2026-10-14 charged 2 s each, so 120 jobs cost about 240 s.
+  The report states whether the device ran the jobs in the submitted
+  order (job timestamps).
+  Command: the command above plus --submit-ahead --smoke-job
+    dbh281hq260s73bubfr0.

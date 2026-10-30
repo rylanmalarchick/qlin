@@ -3,59 +3,73 @@
 A compiler for dynamic quantum circuits (circuits with mid-circuit
 measurement and classical feedforward). qlin finds the part of a program
 that must be decided at runtime, precompiles a fast path for likely
-measurement outcomes, and keeps a correct fallback for the rest.
-
-Status: early development. The crate has the IR, the `.qlin` text format,
-the dynamic-core analysis, a trace enumerator, a small state-vector
-simulator used as a test oracle, an importer for jeff files, a
-latency model, and a search that chooses which classically controlled
-Ifs to replace by coherent control ("defer").
+measurement outcomes, and keeps the unchanged program as the fallback for
+the rest. It also chooses which classically controlled branches to replace
+by coherent control ("defer"), against a latency cost model.
 
 ## Build and test
 
-```
-cargo build
-cargo test
-```
-
 Requires Rust 1.85 or later.
+
+```
+cargo build --release
+cargo test
+cargo test --release -- --ignored   # full certifiers, about 8 minutes
+```
 
 ## Command line
 
 ```
 qlin import [--max-iters K] FILE.jeff   # jeff -> .qlin
-qlin stats [--json] FILE.qlin           # program metrics
-qlin sim FILE.qlin                      # output distribution from |0...0>
 qlin fmt FILE.qlin                      # canonical form
 qlin json FILE.qlin                     # program tree as JSON
-qlin opt [MODEL] [--noise-qubits I] [--check] [--json] FILE.qlin
-                                        # defer search, best program or report
-qlin fastpath [--t T] [--size S] [--sink] [--check] [MODEL] [--json] FILE.qlin
-                                        # fast path over the outcome budget t
+qlin stats [--json] FILE.qlin           # program metrics
+qlin sim FILE.qlin                      # output distribution from |0...0>
+qlin traces FILE.qlin                   # every per-outcome trace
 qlin lat [MODEL] FILE.qlin              # expected latency
+qlin opt [MODEL] [--check] [--json] FILE.qlin
+                                        # M0 normal form, then the defer search
+qlin fastpath [--t T] [--size S] [--sink] [--check] [MODEL] [--json] FILE.qlin
+                                        # fast path over outcomes within t bits of the reference
+qlin check [--random N] A.qlin B.qlin   # compare B with A by simulation
 qlin sweep [--tmeas-list ..] [--tff-list ..] [--tbranch-list ..] FILE.qlin
                                         # variants scored over a cost grid
-qlin traces FILE.qlin                   # every per-outcome trace
+qlin tv-export [--t T] [--sink] FILE.qlin
+                                        # jobs for the Lean output checker
 # MODEL: [--preset heron_like|heron_kingston] [--model ideal|block]
 #        [--tff NS] [--tbranch NS] [--tmeas NS] [--t1q NS] [--t2q NS] [--treset NS]
 ```
 
-`qlin fastpath` dispatches each run of Ifs on the same measured bits
-through one `switch` with a case for every outcome within the budget t,
-and a generic fallback for the rest. `--sink` first moves Pauli
-corrections forward through Clifford gates.
+`qlin --help` lists every option. The cost presets are in `src/cost.rs`.
+`notes/cost-sources.txt` gives the source of each value.
 
-`qlin opt` puts the program in M0 normal form (hoist and merge out of
-Ifs), then searches the defer choices. Latency is the expected makespan
-over exact outcome probabilities (programs up to 12 qubits), under the
-`HERON_LIKE` cost model in `src/cost.rs`. `--check` verifies every scored
-variant by simulation.
+Latency, the search, and `--check` use exact simulation: a dense state
+vector up to 12 qubits, and a stabilizer tableau past that. The tableau
+runs Clifford programs and one-qubit non-Clifford gates on unentangled
+qubits. A program that neither backend can run is reported as skipped.
 
-## Baselines
+## Lean proofs
 
-`bench/` runs bqcp, Qiskit, and TKET on every file in `benchmarks/` and
-writes `results/phase1.csv`. It needs [uv](https://docs.astral.sh/uv/)
-and a clone of [bqcp](https://github.com/1nnocenzo/bqcp).
+`lean/` holds a Lean 4 model of the IR and its semantics, and proofs that
+the rewrite rules (M0, fast path, Pauli sink, direct defer) are sound in a
+density-matrix model. It also holds a checker, proved sound, for the
+outputs of the M0 and fast-path passes. `lean/Axioms.lean` lists the
+theorems that `scripts/lean_axioms.sh` checks.
+
+```
+cd lean
+lake exe cache get          # Mathlib build cache
+lake build
+../scripts/lean_axioms.sh   # each listed theorem uses only the standard axioms
+```
+
+## Benchmarks and experiments
+
+`benchmarks/` holds the input programs. `benchmarks/SOURCES.txt` records
+where each one comes from. `bench/` is a Python (uv) project with the
+Qiskit bridge, the baseline runner, and one script per experiment. Each
+script writes its result files to `results/`, and its docstring gives the
+command to run it.
 
 ```
 cargo build --release
@@ -64,46 +78,9 @@ uv run --project bench pytest bench
 uv run --project bench python bench/run_baselines.py
 ```
 
-`bench/export_dynamarq.py` regenerates `benchmarks/dynamarq/`.
-`bench/run_phase2.py` runs `qlin opt` on every benchmark over a t_ff sweep
-and writes `results/phase2.csv` and `results/phase2.md`.
-`bench/run_phase3.py` runs the fast-path sweep under the block model and
-writes `results/phase3.csv` and `results/phase3.md`.
-Phase 4: `bench/run_phase4_sensitivity.py` (cost-grid sensitivity),
-`bench/run_phase4_selene.py` (Selene accounting check),
-`bench/run_phase4_ibm.py [--dry-run]` (IBM run, needs a working IBM account).
-`bench/qlin_guppy.py` writes a Guppy program for Selene. The cost-model
-sources are in `notes/cost-sources.txt`.
-
-## Lean proofs
-
-`lean/` holds a Lean 4 model of the control structure and proofs that the
-rewrite rules are sound: the M0 moves (fold, hoist, merge, unroll), the
-fast-path step, the Pauli sink and its conjugation table, and that a
-hoist or merge step never increases replay latency (claim C1). Leaves are
-opaque. Their semantics is any additive map that satisfies two axioms,
-listed in `lean/Qlin/Sem.lean`. `lean/Qlin/CQ.lean` gives a concrete
-model on density matrices. In it, gates and reset are Kraus maps, and a Z
-measurement writes a bit. Both axioms are theorems in this model.
-`lean/Qlin/CQGates.lean` proves the sink step in the model from the
-conjugation table. It also proves that the measurement and reset Kraus
-operators sum to the identity. `lean/Qlin/CQDefer.lean` proves the direct
-defer rule with one control bit. `lean/Qlin/Check.lean` holds two checkers
-for compiled programs, one for M0 steps and one for fast-path dispatch.
-Both are proved sound. `qlin tv-export` writes their jobs, and
-`lean/QlinCheck.lean` runs them. `bench/run_tv.py` runs every benchmark.
-`lean/Qlin/Negative.lean` refutes each rule with one side condition
-dropped.
-
-```
-cd lean
-lake exe cache get          # Mathlib v4.28.0 build cache
-lake build
-../scripts/lean_axioms.sh   # every listed theorem uses only the standard axioms
-```
-
-Wolfram checks outside Lean are in `notes/wolfram/` and
-`notes/wolfram-checks.txt`.
+The scripts call `target/release/qlin`. Set `QLIN_BIN` to use another
+binary. The IBM runs (`bench/run_phase4_ibm.py`) need an IBM Quantum
+account.
 
 ## The `.qlin` text format
 

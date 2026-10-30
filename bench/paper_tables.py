@@ -151,13 +151,16 @@ def c6b() -> dict:
         # The model slope is close to linear in t_branch: least-squares line over the scored points.
         fit = stats.linregress([m["t_branch_ns"] for m in model], [m["slope"][v] for m in model])
         eff[v] = (a["pooled"][v] - fit.intercept) / fit.slope / 1000
+    gfit = stats.linregress([m["t_branch_ns"] for m in model], [m["gap_slope"] for m in model])
+    gap_at = {v: gfit.intercept + gfit.slope * eff[v] * 1000 for v in eff}
     return {"rounds": a["rounds"], "both": a["both"], "dropped": a["dropped"],
             "mean": a["mean"], "se": a["se"], "lo": a["lo"], "hi": a["hi"],
             "t19_p": a["t19_p"], "wilcoxon_p": a["wilcoxon_p"], "sw_p": a["sw_p"],
             "model": C6B_MODEL_US,
             "model_source": at[3450]["slope"]["source"], "model_defer": at[3450]["slope"]["best_defer"],
             "pooled_source": a["pooled"]["source"], "pooled_defer": a["pooled"]["best_defer"],
-            "eff_source": eff["source"], "eff_defer": eff["best_defer"]}
+            "eff_source": eff["source"], "eff_defer": eff["best_defer"],
+            "eff_gap_lo": min(gap_at.values()), "eff_gap_hi": max(gap_at.values())}
 
 
 def macros(prefix: str, d: dict, fmt: dict[str, str] | None = None) -> list[str]:

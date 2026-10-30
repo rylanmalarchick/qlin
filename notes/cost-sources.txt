@@ -32,6 +32,19 @@ Cross-checks and conflicts
     too. Using the mid-circuit value for every measure underestimates
     the last layer by 2280 - 1760 = 520 ns per final measure.
 
+T_BRANCH classes (2026-10-30): sweep points for t_branch, not presets.
+  t_branch is controller time per branch decision, beyond the
+  feedforward wait (t_ff). A switch takes 1 (table), one per bit (tree),
+  or one per compare (chain) such decisions (--switch-cost).
+
+T_BRANCH.qick = 42 | paper | arXiv:2110.00557 (QICK), latency table: "Conditional evaluation and address jump", 42 ns (16 clock cycles), original tProcessor firmware
+T_BRANCH.qubic = 14 | paper | arXiv:2309.10333 (QubiC 2.0): "most register writes/control flow instructions execute in 4-7 clock cycles" at 500 MHz, so 8 to 14 ns; the upper end is used
+T_BRANCH.ibm = 3450 | measured | ibm_kingston 2026-09-27, 3.45 us per if_else block, 95% CI 0.32 to 6.58 us (results/phase4_ibm.md); an x gate per block is included
+
+  Not a t_branch source: Quantum Machines OPX+ "conditional feedback
+  224 ns" (vendor page, notes/prior-work.txt) is a full readout-to-pulse
+  latency, which maps to t_ff.
+
 HELIOS (Quantinuum Helios): no preset
   arXiv:2511.05465 (Helios) gives a 2q gate time of about 70 us, ground
   state cooling of about 3 ms before 2q gates, and an average of 55 ms

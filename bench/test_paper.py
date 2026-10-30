@@ -5,6 +5,7 @@ phase runners wrote results/*.md from the same runs with separate code.
 Each emitted value is compared with its report line.
 """
 
+import json
 import os
 import re
 import shutil
@@ -59,6 +60,21 @@ def mismatches(out: Path) -> list[str]:
     ibm = (ROOT / "results" / "phase4_ibm.md").read_text()
     if f"slope: {nums['nIbmSlope']} us" not in ibm:
         bad.append("ibm slope")
+    c6b = (ROOT / "results" / "phase7_c6b_analysis.txt").read_text()
+    if (f"gap slope {nums['nCsixbMean']} us/copy, SE {nums['nCsixbSe']}, "
+            f"95% CI {nums['nCsixbLo']} to {nums['nCsixbHi']}") not in c6b:
+        bad.append("c6b gap")
+    if (f"t test against {nums['nCsixbModel']}" not in c6b
+            or f"p {nums['nCsixbTOneNineP']}" not in c6b
+            or f"Wilcoxon against 0: p {nums['nCsixbWilcoxonP']}" not in c6b):
+        bad.append("c6b tests")
+    if f"complete rounds {nums['nCsixbRounds']}, rounds with both slopes {nums['nCsixbBoth']}, jobs dropped {nums['nCsixbDropped']}" not in c6b:
+        bad.append("c6b rounds")
+    model = (ROOT / "results" / "phase7_c6b_model.txt").read_text()
+    if ("3450 source per shot (us)" not in model
+            or f"slope {nums['nCsixbModelSource']} us/copy" not in model.split("3450 source")[1].splitlines()[0]
+            or f"slope {nums['nCsixbModelDefer']} us/copy" not in model.split("3450 best_defer")[1].splitlines()[0]):
+        bad.append("c6b model slopes")
     return bad
 
 
@@ -81,3 +97,18 @@ def test_a_planted_wrong_value_is_caught(tmp_path):
     out = tmp_path / "gen"
     emit(out, res)
     assert mismatches(out) == ["defer: | jeff/teleportation | 600 | 2 | 2090 | 2090 | 9999 | 1000 | 2 | 2 | 0 |"]
+
+
+def test_a_planted_wrong_c6b_time_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "phase7_c6b.json"
+    rows = json.loads(p.read_text())
+    for r in rows:
+        if r["variant"] == "source_x8":
+            r["times"] = [t + 50_000.0 for t in r["times"]]  # +50 us per shot
+    p.write_text(json.dumps(rows))
+    out = tmp_path / "gen"
+    emit(out, res)
+    # The shift moves the gap slope and, with it, both test p values.
+    assert mismatches(out) == ["c6b gap", "c6b tests"]

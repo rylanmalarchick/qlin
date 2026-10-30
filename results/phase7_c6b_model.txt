@@ -1,0 +1,9 @@
+0 source per shot (us): 7.99 17.96 37.90 77.78 slope 9.97 us/copy
+0 best_defer per shot (us): 5.68 13.34 28.66 59.29 slope 7.66 us/copy
+0 gap (us): 2.31 4.62 9.25 18.50 slope 2.31 us/copy
+1725 source per shot (us): 41.95 85.80 173.51 348.92 slope 43.85 us/copy
+1725 best_defer per shot (us): 31.28 64.54 131.05 264.08 slope 33.26 us/copy
+1725 gap (us): 10.66 21.26 42.46 84.84 slope 10.60 us/copy
+3450 source per shot (us): 76.45 154.80 311.51 624.92 slope 78.35 us/copy
+3450 best_defer per shot (us): 57.16 116.29 234.55 471.08 slope 59.13 us/copy
+3450 gap (us): 19.29 38.51 76.96 153.84 slope 19.22 us/copy

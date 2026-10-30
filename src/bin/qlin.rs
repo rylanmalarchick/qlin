@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
 use qlin::check::{check, CheckError, Checked};
-use qlin::cost::{CostModel, Sync};
+use qlin::cost::{CostModel, SwitchCost, Sync};
 use qlin::import::jeff::{import_jeff, ImportOptions};
 use qlin::ir::{Program, Qubit};
 use qlin::latency::{expected, records, sampled_records, Expected, Noise, Record};
@@ -46,7 +46,8 @@ usage:
   qlin sweep [--preset P] [--tmeas-list A,B] [--tff-list A,B] [--tbranch-list A,B]
              [--noise-qubits I,J] FILE.qlin
                                           score fixed variants over a cost grid
-MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--tff NS] [--tbranch NS] [--tmeas NS]
+MODEL: [--preset heron_like|heron_kingston] [--model ideal|block] [--switch-cost table|tree|chain]
+       [--tff NS] [--tbranch NS] [--tmeas NS]
        [--t1q NS] [--t2q NS] [--treset NS] (t_3q follows as 6 x t_2q)
        (default preset heron_like; see notes/cost-sources.txt)";
 
@@ -67,6 +68,8 @@ struct Flags {
     tff: Option<f64>,
     tbranch: Option<f64>,
     block: bool,
+    /// Decisions per switch in the block model (default: table).
+    switch: Option<SwitchCost>,
     t: Option<usize>,
     size: Option<usize>,
     kingston: bool,
@@ -109,6 +112,9 @@ impl Flags {
         }
         if self.block {
             c.sync = Sync::Block;
+        }
+        if let Some(s) = self.switch {
+            c.switch = s;
         }
         c.validate().map_err(|e| e.to_string())?;
         Ok(c)
@@ -154,7 +160,7 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
             }
             Some(
                 flag @ ("--tff" | "--tbranch" | "--tmeas" | "--t1q" | "--t2q" | "--treset" | "--t"
-                | "--size" | "--model" | "--sample" | "--seed"),
+                | "--size" | "--model" | "--sample" | "--seed" | "--switch-cost"),
             ) => {
                 let v = it.next().ok_or(USAGE)?;
                 let bad = || format!("bad {flag} `{v}`");
@@ -169,6 +175,14 @@ fn flags(rest: &[String]) -> Result<(&String, Flags), String> {
                     "--size" => f.size = Some(v.parse().map_err(|_| bad())?),
                     "--sample" => f.sample = Some(v.parse().map_err(|_| bad())?),
                     "--seed" => f.seed = Some(v.parse().map_err(|_| bad())?),
+                    "--switch-cost" => {
+                        f.switch = Some(match v.as_str() {
+                            "table" => SwitchCost::Table,
+                            "tree" => SwitchCost::Tree,
+                            "chain" => SwitchCost::Chain,
+                            _ => return Err(bad()),
+                        })
+                    }
                     _ => {
                         f.block = match v.as_str() {
                             "block" => true,
@@ -298,7 +312,7 @@ fn sweep(prog: &Program, f: &Flags) -> Result<String, String> {
                     scores.insert("best_defer".into(), bnb.best.mean.into());
                     points.push(serde_json::json!({
                         "t_meas": tmeas, "t_ff": tff, "t_branch": tbranch,
-                        "sync": cost.sync, "scores": scores,
+                        "sync": cost.sync, "switch": cost.switch, "scores": scores,
                     }));
                 }
             }

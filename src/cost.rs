@@ -16,6 +16,31 @@ pub enum Sync {
     Block,
 }
 
+/// How the controller dispatches a `switch` in the `Block` model: the
+/// number of decisions, each `t_branch` long, per executed switch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum SwitchCost {
+    /// One decision: a jump table on the switch bits.
+    Table,
+    /// One decision per switch bit: a full decision tree on the bits.
+    Tree,
+    /// One compare per case, in order, until one matches. The default
+    /// runs after every case fails.
+    Chain,
+}
+
+impl SwitchCost {
+    /// Decisions for a switch on `bits` bits with `cases` cases that
+    /// takes arm `arm` (`cases` for the default).
+    pub fn decisions(self, bits: usize, cases: usize, arm: usize) -> usize {
+        match self {
+            SwitchCost::Table => 1,
+            SwitchCost::Tree => bits.max(1),
+            SwitchCost::Chain => (arm + 1).min(cases).max(1),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct CostModel {
     pub t_1q: f64,
@@ -30,6 +55,8 @@ pub struct CostModel {
     /// Extra stall per executed branch in the `Block` model.
     pub t_branch: f64,
     pub sync: Sync,
+    /// Decisions per executed `switch` in the `Block` model.
+    pub switch: SwitchCost,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -56,6 +83,7 @@ impl CostModel {
         t_ff: 600.0,
         t_branch: 0.0,
         sync: Sync::Ideal,
+        switch: SwitchCost::Table,
     };
 
     /// IBM Kingston (Heron r2). Each value and its source is listed in
@@ -70,6 +98,7 @@ impl CostModel {
         t_ff: 600.0,
         t_branch: 0.0,
         sync: Sync::Ideal,
+        switch: SwitchCost::Table,
     };
 
     /// Checks that every time is finite and non-negative and that

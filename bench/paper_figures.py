@@ -8,6 +8,9 @@ OUT_DIR defaults to paper/generated. Writes figures/*.pdf:
   blocks, with the least-squares fit and its 95% confidence band.
 - pairs.pdf: the 27 paired IBM differences, source minus best defer,
   with the kept-pairs mean and CI and the modeled 19 us gap.
+- copies.pdf: C6b. Left: per-shot time against copies k, per variant, with
+  the least-squares line, without the jobs that the outlier rule drops. Right: the per-round gap slope with its mean,
+  95% CI, and the modeled 19.22 us per copy.
 Colors: the validated categorical palette of the dataviz skill (slots 1-4),
 with a distinct marker per series for grayscale print.
 """
@@ -26,6 +29,8 @@ import matplotlib
 matplotlib.use("pdf")
 import matplotlib.pyplot as plt  # noqa: E402
 from scipy import stats  # noqa: E402
+
+from analyze_c6b import KS, MODEL_US, analyze  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = Path(os.environ.get("QLIN_RESULTS", ROOT / "results"))
@@ -130,13 +135,53 @@ def pairs(out: Path) -> None:
     plt.close(fig)
 
 
+def copies(out: Path) -> None:
+    rows = {r["variant"]: [t / 1000 for t in r["times"]]
+            for r in json.loads((RESULTS / "phase7_c6b.json").read_text())}
+    a = analyze(str(RESULTS / "phase7_c6b.json"))
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(6.2, 2.3))
+    drop = set(a["dropped_jobs"])
+    for i, (v, label) in enumerate((("source", "source"), ("best_defer", "best defer"))):
+        pts = [(k, t) for k in KS for r, t in enumerate(rows[f"{v}_x{k}"][:a["rounds"]])
+               if (v, k, r) not in drop]
+        off = (i - 0.5) * 0.15
+        ax.plot([k + off for k, _ in pts], [t for _, t in pts], linestyle="none",
+                marker=MARKERS[i], markersize=2.5, alpha=0.5, color=SERIES[i])
+        # The jobs that the outlier rule drops are off the scale.
+        fit = stats.linregress([k for k, _ in pts], [t for _, t in pts])
+        ax.plot([1, 8], [fit.intercept + fit.slope, fit.intercept + 8 * fit.slope],
+                color=SERIES[i], label=f"{label}: {fit.slope:.1f} $\\mu$s per copy")
+    ax.set_xticks(KS)
+    ax.set_title(f"{a['dropped']} outlier jobs not shown", color=MUTED, fontsize=6)
+    ax.set_xlabel("copies $k$")
+    ax.set_ylabel("$\\mu$s per shot")
+    ax.legend(frameon=False, loc="upper left", fontsize=6)
+    grid(ax)
+    g = a["gaps"]
+    bx.axhspan(a["lo"], a["hi"], color=SERIES[0], alpha=0.18, linewidth=0,
+               label=f"mean of {len(g)} rounds, 95% CI")
+    bx.axhline(a["mean"], color=SERIES[0])
+    bx.axhline(MODEL_US, color=SERIES[1], linestyle="--", label=f"model: {MODEL_US} $\\mu$s")
+    bx.axhline(0, color=MUTED, linewidth=0.8)
+    bx.plot(range(1, len(g) + 1), g, linestyle="none", marker="o", markersize=4, color=INK,
+            label="round")
+    bx.set_xlabel("round")
+    bx.set_ylabel("gap slope ($\\mu$s per copy)")
+    bx.legend(frameon=False, loc="upper right", fontsize=6)
+    grid(bx)
+    fig.tight_layout()
+    fig.savefig(out / "copies.pdf")
+    plt.close(fig)
+
+
 def main(out: Path) -> None:
     fig_dir = out / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
     fastpath(fig_dir)
     probe(fig_dir)
     pairs(fig_dir)
-    print(f"wrote {fig_dir}/fastpath.pdf, probe.pdf, pairs.pdf")
+    copies(fig_dir)
+    print(f"wrote {fig_dir}/fastpath.pdf, probe.pdf, pairs.pdf, copies.pdf")
 
 
 if __name__ == "__main__":

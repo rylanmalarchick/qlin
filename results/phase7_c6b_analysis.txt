@@ -1,0 +1,6 @@
+complete rounds 15, rounds with both slopes 15, jobs dropped 4
+1. gap slope 6.97 us/copy, SE 7.30, 95% CI -8.69 to 22.63
+2. t test against 19.22: t -1.68, p 0.1156
+3. Wilcoxon against 0: p 0.8040
+Shapiro-Wilk: p 0.0133
+verdict: not resolved

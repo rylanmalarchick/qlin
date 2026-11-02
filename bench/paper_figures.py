@@ -3,7 +3,8 @@
 Run: uv run --project bench python bench/paper_figures.py [OUT_DIR]
 OUT_DIR defaults to paper/generated. Writes figures/*.pdf:
 - fastpath.pdf: fast-path expected latency against the budget t,
-  normalized to the source program, at t_branch = 0 and 1000 ns (phase3.csv).
+  normalized to the source program, at t_branch = 0 and at the QICK class
+  (42 ns) with a decision-tree switch (phase8_switch.csv).
 - probe.pdf: IBM branch-cost probe, per-shot time against if_else
   blocks, with the least-squares fit and its 95% confidence band.
 - pairs.pdf: the 27 paired IBM differences, source minus best defer,
@@ -56,22 +57,24 @@ def grid(ax) -> None:
 
 
 def fastpath(out: Path) -> None:
-    data = {(r["benchmark"], float(r["tbranch"])): r
-            for r in csv.DictReader(open(RESULTS / "phase3.csv"))}
+    data = {(r["benchmark"], r["class"], r["switch"]): r
+            for r in csv.DictReader(open(RESULTS / "phase8_switch.csv"))}
+    panels = [("none", "table", "$t_\\mathrm{branch}$ = 0 (modeled)"),
+              ("qick", "tree", "QICK, 42 ns per decision, tree (modeled)")]
     fig, axes = plt.subplots(1, 2, figsize=(6.2, 2.3), sharey=True)
-    for ax, tb in zip(axes, (0.0, 1000.0)):
+    for ax, (cls, sw, title) in zip(axes, panels):
         for i, b in enumerate(FAST):
-            r = data[(b, tb)]
+            r = data[(b, cls, sw)]
             pts = [(t, float(r[f"fast_t{t}"]) / float(r["source"]))
                    for t in range(7) if r.get(f"fast_t{t}")]
             ax.plot([t for t, _ in pts], [y for _, y in pts], color=SERIES[i],
                     marker=MARKERS[i], markersize=4, label=b.split("/")[1].replace("_", " "))
         ax.axhline(1.0, color=MUTED, linewidth=0.8, linestyle="--")
-        ax.set_title(f"$t_\\mathrm{{branch}}$ = {tb:.0f} ns (modeled)", color=INK)
+        ax.set_title(title, color=INK)
         ax.set_xlabel("budget $t$")
         grid(ax)
     axes[0].set_ylabel("latency / source")
-    axes[1].legend(frameon=False, loc="center right")
+    axes[1].legend(frameon=False, loc="upper right", fontsize=6)
     fig.tight_layout()
     fig.savefig(out / "fastpath.pdf")
     plt.close(fig)

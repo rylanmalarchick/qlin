@@ -75,6 +75,17 @@ def mismatches(out: Path) -> list[str]:
             or f"slope {nums['nCsixbModelSource']} us/copy" not in model.split("3450 source")[1].splitlines()[0]
             or f"slope {nums['nCsixbModelDefer']} us/copy" not in model.split("3450 best_defer")[1].splitlines()[0]):
         bad.append("c6b model slopes")
+    sw = (ROOT / "results" / "phase8_switch.md").read_text()
+    for c in ("none", "qubic", "qick", "ibm"):
+        cc = c.capitalize()
+        for s in ("table", "tree", "chain"):
+            key = f"nSwitch{cc}{s.capitalize()}"
+            if f"{key}Ten" not in nums:
+                continue
+            want = (f"| {c} | {nums[f'nSwitch{cc}Tb']} | {s} | {nums[key + 'Pos']} | "
+                    f"{nums[key + 'Ten']} | {nums[key + 'Max']}% (")
+            if want not in sw:
+                bad.append(f"switch {c} {s}")
     return bad
 
 
@@ -112,3 +123,23 @@ def test_a_planted_wrong_c6b_time_is_caught(tmp_path):
     emit(out, res)
     # The shift moves the gap slope and, with it, both test p values.
     assert mismatches(out) == ["c6b gap", "c6b tests"]
+
+
+def test_a_planted_wrong_switch_gain_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "phase8_switch.csv"
+    lines = p.read_text().splitlines()
+    head = lines[0].split(",")
+    col = {k: i for i, k in enumerate(head)}
+    for i, line in enumerate(lines[1:], 1):
+        f = line.split(",")
+        if (f[col["benchmark"]], f[col["class"]], f[col["switch"]]) == (
+                "qec/repetition11_0_noisy", "qick", "tree"):
+            f[col["gain"]] = "0.5"
+            lines[i] = ",".join(f)
+    p.write_text("\n".join(lines) + "\n")
+    out = tmp_path / "gen"
+    emit(out, res)
+    # The largest QICK tree gain falls from 91.2% (this row) to 90.7%.
+    assert mismatches(out) == ["switch qick tree"]

@@ -188,9 +188,9 @@ impl Replay<'_> {
 
     /// Block model: the controller decides one branch at a time. A branch
     /// starts when its condition (and any enclosing condition) is known
-    /// and the controller is free, and takes `t_branch`. Every qubit of
-    /// the branch waits for the decision, taken or not.
-    fn stall(&mut self, op: &Op, bits: &[Bit], gates: &[Bit]) {
+    /// and the controller is free, and takes `decisions` x `t_branch`.
+    /// Every qubit of the branch waits for the decision, taken or not.
+    fn stall(&mut self, op: &Op, bits: &[Bit], gates: &[Bit], decisions: usize) {
         if self.cost.sync != Sync::Block {
             return;
         }
@@ -198,7 +198,7 @@ impl Replay<'_> {
             .gate_time(bits)
             .max(self.gate_time(gates))
             .max(self.controller_free);
-        let at = start + self.cost.t_branch;
+        let at = start + self.cost.t_branch * decisions as f64;
         self.controller_free = at;
         for q in op.footprint().qubits {
             if !self.noise.qubits.contains(&q) {
@@ -295,7 +295,7 @@ impl Replay<'_> {
                 let mut inner = gates.to_vec();
                 if !self.relaxed.contains(path) {
                     let bits: Vec<Bit> = cond.bits().into_iter().collect();
-                    self.stall(op, &bits, gates);
+                    self.stall(op, &bits, gates, 1);
                     inner.extend(bits);
                 }
                 if taken {
@@ -318,7 +318,7 @@ impl Replay<'_> {
                     self.arm(body, path, 0, &inner)?;
                     if !self.stopped {
                         let bits: Vec<Bit> = until.bits().into_iter().collect();
-                        self.stall(op, &bits, gates);
+                        self.stall(op, &bits, gates, 1);
                     }
                     let vals = &self.vals;
                     exited = self.stopped || until.eval(&|b: Bit| vals[b.0 as usize]);
@@ -341,7 +341,8 @@ impl Replay<'_> {
                 }
                 let mut inner = gates.to_vec();
                 if !self.relaxed.contains(path) {
-                    self.stall(op, bits, gates);
+                    let n = self.cost.switch.decisions(bits.len(), cases.len(), arm);
+                    self.stall(op, bits, gates, n);
                     inner.extend(bits.iter().copied());
                 }
                 self.arm(block, path, arm, &inner)?;

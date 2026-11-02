@@ -141,3 +141,45 @@ fn one_switch_beats_a_chain_of_ifs_when_branches_cost_time() {
     assert_eq!(e(&sw, block(200.0)), 1972.0);
     assert_eq!(e(&ifs, block(0.0)), e(&sw, block(0.0)));
 }
+
+/// Latency of `text` under the block model, t_branch = 1000 ns, with the
+/// given switch cost. Every program below has one outcome.
+fn switch_latency(text: &str, switch: qlin::cost::SwitchCost) -> f64 {
+    let p = parse(text).unwrap();
+    let recs = records(&p, LIMIT).unwrap();
+    assert_eq!(recs.len(), 1);
+    let c = CostModel {
+        switch,
+        ..block(1000.0)
+    };
+    expected(&p, &recs, &c, &Noise::none(), &BTreeSet::new())
+        .unwrap()
+        .mean
+}
+
+#[test]
+fn switch_cost_counts_table_tree_and_chain_decisions() {
+    use qlin::cost::SwitchCost::{Chain, Table, Tree};
+    // c0 = 1 (x q0 0-32, measure 32-832), c1 = 0 (measure 0-800). The bits
+    // are known at 832 + 600 = 1432. The switch takes n x 1000, then z q1
+    // runs 32 ns. Case [1 0] is the third case: table 1, tree 2 (bits),
+    // chain 3 (compares).
+    let third = "qubits 2\nbits 2\nx q0\nmeasure q0 -> c0\nmeasure q1 -> c1\n\
+        switch c0 c1 { case 0 0 { x q1 } case 0 1 { x q1 } case 1 0 { z q1 } default { h q1 } }\n";
+    assert_eq!(switch_latency(third, Table), 2464.0);
+    assert_eq!(switch_latency(third, Tree), 3464.0);
+    assert_eq!(switch_latency(third, Chain), 4464.0);
+    // c0 = c1 = 0: both measurements 0-800, bits known at 1400. Case [0 0]
+    // is the first case, so the chain makes one compare.
+    let first = "qubits 2\nbits 2\nmeasure q0 -> c0\nmeasure q1 -> c1\n\
+        switch c0 c1 { case 0 0 { z q1 } case 0 1 { x q1 } case 1 0 { x q1 } default { h q1 } }\n";
+    assert_eq!(switch_latency(first, Table), 2432.0);
+    assert_eq!(switch_latency(first, Tree), 3432.0);
+    assert_eq!(switch_latency(first, Chain), 2432.0);
+    // c0 = c1 = 1 (x on both, measurements end at 832, bits known at 1432):
+    // the default runs after both cases fail, so the chain makes 2 compares.
+    let default = "qubits 2\nbits 2\nx q0\nx q1\nmeasure q0 -> c0\nmeasure q1 -> c1\n\
+        switch c0 c1 { case 0 0 { x q1 } case 1 0 { x q1 } default { z q1 } }\n";
+    assert_eq!(switch_latency(default, Table), 2464.0);
+    assert_eq!(switch_latency(default, Chain), 3464.0);
+}

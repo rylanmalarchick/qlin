@@ -187,7 +187,7 @@ def switch_tables() -> tuple[str, str, dict]:
         rlines.append(f"{tex_name(b)} & {q} & " + " & ".join(pct(g) for g in gains) + r" \\")
     nums["rows"] = len(rlines)
     rowtab = (r"\begin{tabular}{lrrrrr}" "\n" r"\toprule" "\n"
-              r"benchmark & qubits & none & QubiC, tree & QICK, tree & IBM, chain \\" "\n"
+              r"benchmark & qubits & 0~ns & QubiC, tree & QICK, tree & IBM, chain \\" "\n"
               r"\midrule" "\n" + "\n".join(rlines) + "\n" r"\bottomrule" "\n"
               r"\end{tabular}" "\n")
     return summary, rowtab, nums

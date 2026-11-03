@@ -797,4 +797,62 @@ theorem makespan_le (Q : Finset Qubit) (a b : TState) (h : a.Le b) :
     makespan Q a ≤ makespan Q b := by
   exact Finset.sup_mono_fun fun q _ => h.2.2.2.1 q
 
+/-! ### Expected latency
+
+The latency report is the expected makespan over the outcome records,
+weighted by their probabilities. The weights are nonnegative by their
+type. The step theorems below compare two programs over the same weighted
+records. -/
+
+/-- Expected makespan over the records in `s`, with weights `w`, of the
+end states `fin i`. -/
+noncomputable def expectedMakespan {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0)
+    (Q : Finset Qubit) (fin : ι → TState) : ℝ≥0 :=
+  ∑ i ∈ s, w i * makespan Q (fin i)
+
+/-- End states that are pointwise no later give no larger expected makespan. -/
+theorem expectedMakespan_le {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0) (Q : Finset Qubit)
+    (a b : ι → TState) (h : ∀ i ∈ s, (a i).Le (b i)) :
+    expectedMakespan s w Q a ≤ expectedMakespan s w Q b := by
+  unfold expectedMakespan
+  exact Finset.sum_le_sum fun i hi => mul_le_mul_of_nonneg_left (makespan_le Q _ _ (h i hi)) (zero_le _)
+
+/-- A hoist step does not increase the expected latency over any weighted
+set of records on which the source does not stop: the side conditions of
+`hoist_latency`. -/
+theorem hoist_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0) (Q : Finset Qubit)
+    (C : Cost) (R : ι → Record) (c : Cond) (x : Op) (pA A pB B : List Op)
+    (gates : Finset Bit)
+    (hA : ∀ y ∈ pA, (Op.fp x).Disj (Op.fp y))
+    (hB : ∀ y ∈ pB, (Op.fp x).Disj (Op.fp y))
+    (hc : Disjoint c.bits (Op.fp x).writes)
+    (henc : Disjoint gates (Op.fp x).writes)
+    (st : TState) (hst : st.stopped = false)
+    (hrun : ∀ i ∈ s,
+      (run C (R i) (.ite c (pA ++ x :: A) (pB ++ x :: B)) gates st).stopped = false) :
+    expectedMakespan s w Q (fun i => runB C (R i) [x, .ite c (pA ++ A) (pB ++ B)] gates st) ≤
+      expectedMakespan s w Q
+        (fun i => run C (R i) (.ite c (pA ++ x :: A) (pB ++ x :: B)) gates st) := by
+  exact expectedMakespan_le s w Q _ _ fun i hi =>
+    hoist_latency C (R i) c x pA A pB B gates hA hB hc henc st hst (hrun i hi)
+
+/-- A merge step does not increase the expected latency over any weighted
+set of records on which the source does not stop: the side conditions of
+`merge_latency`. -/
+theorem merge_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0) (Q : Finset Qubit)
+    (C : Cost) (R : ι → Record) (c : Cond) (x : Op) (A sA B sB : List Op)
+    (gates : Finset Bit)
+    (hA : ∀ y ∈ sA, (Op.fp x).Disj (Op.fp y))
+    (hB : ∀ y ∈ sB, (Op.fp x).Disj (Op.fp y))
+    (hencA : ∀ y ∈ sA, Disjoint gates (Op.fp y).writes)
+    (hencB : ∀ y ∈ sB, Disjoint gates (Op.fp y).writes)
+    (st : TState) (hst : st.stopped = false)
+    (hrun : ∀ i ∈ s,
+      (run C (R i) (.ite c (A ++ x :: sA) (B ++ x :: sB)) gates st).stopped = false) :
+    expectedMakespan s w Q (fun i => runB C (R i) [.ite c (A ++ sA) (B ++ sB), x] gates st) ≤
+      expectedMakespan s w Q
+        (fun i => run C (R i) (.ite c (A ++ x :: sA) (B ++ x :: sB)) gates st) := by
+  exact expectedMakespan_le s w Q _ _ fun i hi =>
+    merge_latency C (R i) c x A sA B sB gates hA hB hencA hencB st hst (hrun i hi)
+
 end Qlin

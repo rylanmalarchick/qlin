@@ -11,8 +11,9 @@ and the rest of the program by one Switch over `G`:
 
 `fastpath_step` shows this Switch equals the group followed by the rest,
 for any case set, as long as every case body equals "selected arms, then
-rest". Induction over the groups gives the whole construction: the case
-body of the next group is again such a Switch.
+rest". `fastpath_sound` extends it to the whole construction by induction
+over `FastPathOf`: the case body of the next group is again such a
+Switch.
 -/
 
 namespace Qlin
@@ -97,5 +98,34 @@ theorem fastpath_step (I : Interp D) (G : Finset Bit) (grp rest : List Op)
     rw [ih (fun p hp => hcase p (List.mem_cons_of_mem _ hp)),
       hcase (v, blk) List.mem_cons_self, denB_append I (selected v grp) rest,
       denB_selected I G v grp hbits hw, ← denB_append, ← denB_add, restrict_split]
+
+/-- `FastPathOf P Q`: `Q` is a program that the fast-path construction can
+build from `P`. Ops before a dispatch stay as they are. A dispatch
+replaces a group and the rest by a Switch over `G` whose default is the
+group and the rest (the exit edge), and whose every case body is again
+built from "selected arms, then rest". The relation fixes no budget, no
+reference outcome, and no size limit. -/
+inductive FastPathOf : List Op → List Op → Prop
+  | refl (P : List Op) : FastPathOf P P
+  | cons (o : Op) {P Q : List Op} : FastPathOf P Q → FastPathOf (o :: P) (o :: Q)
+  | dispatch (G : Finset Bit) (grp rest : List Op) (cases : List (Assign × List Op))
+      (hbits : ∀ o ∈ grp, ∀ c A B, o = Op.ite c A B → c.bits ⊆ G)
+      (hw : Disjoint G (Op.fps grp).writes)
+      (hcase : ∀ p ∈ cases, FastPathOf (selected p.1 grp ++ rest) p.2) :
+      FastPathOf (grp ++ rest) [.switch G cases (grp ++ rest)]
+
+/-- The whole fast-path construction is sound: every program that it can
+build from `P`, for any groups, cases, and budget, denotes the same as
+`P`. Induction over `FastPathOf` from `fastpath_step`. -/
+theorem fastpath_sound (I : Interp D) {P Q : List Op} (h : FastPathOf P Q) (s : State D) :
+    denB I Q s = denB I P s := by
+  induction h generalizing s with
+  | refl P => rfl
+  | cons o _ ih =>
+    simp only [denB]
+    exact ih _
+  | dispatch G grp rest cases hbits hw _ ih =>
+    simp only [denB]
+    exact fastpath_step I G grp rest cases hbits hw (fun p hp t => ih p hp t) s
 
 end Qlin

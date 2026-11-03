@@ -814,7 +814,8 @@ noncomputable def expectedMakespan {ι : Type*} (s : Finset ι) (w : ι → ℝ�
 theorem expectedMakespan_le {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0) (Q : Finset Qubit)
     (a b : ι → TState) (h : ∀ i ∈ s, (a i).Le (b i)) :
     expectedMakespan s w Q a ≤ expectedMakespan s w Q b := by
-  sorry
+  unfold expectedMakespan
+  exact Finset.sum_le_sum fun i hi => mul_le_mul_of_nonneg_left (makespan_le Q _ _ (h i hi)) (zero_le _)
 
 /-- A hoist step does not increase the expected latency over any weighted
 set of records on which the source does not stop: the side conditions of
@@ -832,7 +833,8 @@ theorem hoist_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0)
     expectedMakespan s w Q (fun i => runB C (R i) [x, .ite c (pA ++ A) (pB ++ B)] gates st) ≤
       expectedMakespan s w Q
         (fun i => run C (R i) (.ite c (pA ++ x :: A) (pB ++ x :: B)) gates st) := by
-  sorry
+  exact expectedMakespan_le s w Q _ _ fun i hi =>
+    hoist_latency C (R i) c x pA A pB B gates hA hB hc henc st hst (hrun i hi)
 
 /-- A merge step does not increase the expected latency over any weighted
 set of records on which the source does not stop: the side conditions of
@@ -850,6 +852,7 @@ theorem merge_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0)
     expectedMakespan s w Q (fun i => runB C (R i) [.ite c (A ++ sA) (B ++ sB), x] gates st) ≤
       expectedMakespan s w Q
         (fun i => run C (R i) (.ite c (A ++ x :: sA) (B ++ x :: sB)) gates st) := by
-  sorry
+  exact expectedMakespan_le s w Q _ _ fun i hi =>
+    merge_latency C (R i) c x A sA B sB gates hA hB hencA hencB st hst (hrun i hi)
 
 end Qlin

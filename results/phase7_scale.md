@@ -3,7 +3,7 @@
 Model: block sync, HERON_LIKE (assumed values), t_ff = 600 ns. Latency is
 expected makespan (ns) over exact outcome probabilities from |0...0>, from
 the stabilizer backend. Every fast-path and sink variant passed the
-stabilizer check: 196 variants (a failure stops the run).
+stabilizer check: 252 variants (a failure stops the run).
 
 ## t_branch = 0 ns
 
@@ -23,6 +23,10 @@ stabilizer check: 196 variants (a failure stops the run).
 | qec/repetition9_0_noisy | 18 | 3332 | bqcp | 3400 | fast_t0 | -2.0% |
 | qec/repetition9_1 | 17 | 1764 | bqcp | 3388 | sink_fast_t0 | -92.1% |
 | qec/repetition9_1_noisy | 18 | 3967 | source | 3400 | sink_fast_t0 | 14.3% |
+| qec/surface3_0 | 18 | 2056 | bqcp | 3488 | sink_fast_t0 | -69.6% |
+| qec/surface3_0_noisy | 19 | 3756 | source | 3488 | sink_fast_t0 | 7.1% |
+| qec/surface3_1 | 18 | 1920 | bqcp | 3760 | sink_fast_t0 | -95.8% |
+| qec/surface3_1_noisy | 19 | 3588 | bqcp | 3772 | sink_fast_t0 | -5.1% |
 
 ## t_branch = 200 ns
 
@@ -42,6 +46,10 @@ stabilizer check: 196 variants (a failure stops the run).
 | qec/repetition9_0_noisy | 18 | 54320 | bqcp | 3602 | fast_t6 | 93.4% |
 | qec/repetition9_1 | 17 | 1764 | bqcp | 3788 | sink_fast_t0 | -114.7% |
 | qec/repetition9_1_noisy | 18 | 54964 | source | 3823 | sink_fast_t6 | 93.0% |
+| qec/surface3_0 | 18 | 2056 | bqcp | 3956 | fast_t0 | -92.4% |
+| qec/surface3_0_noisy | 19 | 9488 | source | 3958 | fast_t4 | 58.3% |
+| qec/surface3_1 | 18 | 1920 | bqcp | 4228 | fast_t0 | -120.2% |
+| qec/surface3_1_noisy | 19 | 9116 | bqcp | 4228 | fast_t4 | 53.6% |
 
 ## t_branch = 1000 ns
 
@@ -61,6 +69,10 @@ stabilizer check: 196 variants (a failure stops the run).
 | qec/repetition9_0_noisy | 18 | 258320 | bqcp | 4412 | fast_t6 | 98.3% |
 | qec/repetition9_1 | 17 | 1764 | bqcp | 4964 | fast_t0 | -181.4% |
 | qec/repetition9_1_noisy | 18 | 258964 | source | 4979 | fast_t6 | 98.1% |
+| qec/surface3_0 | 18 | 2056 | bqcp | 4756 | fast_t0 | -131.3% |
+| qec/surface3_0_noisy | 19 | 33488 | source | 4758 | fast_t4 | 85.8% |
+| qec/surface3_1 | 18 | 1920 | bqcp | 5028 | fast_t0 | -161.9% |
+| qec/surface3_1_noisy | 19 | 33116 | bqcp | 5028 | fast_t4 | 84.8% |
 
 ## Baselines (guarded by qlin check from |0...0>)
 
@@ -92,36 +104,15 @@ stabilizer check: 196 variants (a failure stops the run).
 - qec/repetition9_1 qiskit_o3: checked
 - qec/repetition9_1_noisy bqcp: checked
 - qec/repetition9_1_noisy qiskit_o3: checked
+- qec/surface3_0 bqcp: checked
+- qec/surface3_0 qiskit_o3: 18 qubits, not a stabilizer program
+- qec/surface3_0_noisy bqcp: checked
+- qec/surface3_0_noisy qiskit_o3: 19 qubits, not a stabilizer program
+- qec/surface3_1 bqcp: checked
+- qec/surface3_1 qiskit_o3: distributions differ on input 0 by 3.125e-2
+- qec/surface3_1_noisy bqcp: checked
+- qec/surface3_1_noisy qiskit_o3: distributions differ on input 0 by 1.970e-2
 
 ## Skipped
 
-- jeff/qft-adder-quantum_7: qlin lat /home/rylan/dev/projects/qlin/.claude/worktrees/scale-stab/benchmarks/jeff/qft-adder-quantum_7.qlin: 14 qubits is more than the limit of 12
-
-## Interpretation (2026-10-14)
-
-Finding: with no assumed branch overhead (t_branch = 0), the Pauli sink
-beats the best baseline on the four noisy |+> codes (modeled).
-
-| benchmark | gain at t_branch = 0 | best baseline |
-|---|---|---|
-| repetition7_1_noisy | 12.2% | source |
-| repetition9_1_noisy | 14.3% | source |
-| repetition11_1_noisy | 16.0% | source |
-| steane_noisy | 14.3% | source |
-| repetition7_0_noisy | -2.2% | bqcp |
-| repetition9_0_noisy | -2.0% | bqcp |
-| repetition11_0_noisy | -1.9% | bqcp |
-
-- On the |+> codes, the corrections pass the unencoding Cliffords. The
-  gain grows with d: 9.5% at d = 5 (Phase 3), then 12.2, 14.3, and 16.0%.
-- Noiseless codes: from |0...0> every syndrome is 0. bqcp removes every
-  correction and wins, as in Phase 1. Read the QEC results on the _noisy
-  variants only.
-- At t_branch = 200 and 1000 ns the gains are 33 to 99.5%. The source's
-  lookup decoder has one If per syndrome value: 63, 255, and 1023 for
-  d = 7, 9, 11. A serial controller pays t_branch for each If.
-- That gain depends on the decoder form and on t_branch. t_branch has one
-  measurement: 3.45 us, 95% CI 0.32 to 6.58 (Phase 4).
-- Not done here: bqcp as a pre-pass before the fast path. The steane and
-  steane_noisy Qiskit O3 outputs do not run on the stabilizer backend, so
-  they are missing as baselines.
+- jeff/qft-adder-quantum_7: qlin lat /home/rylan/dev/projects/qlin-surface/benchmarks/jeff/qft-adder-quantum_7.qlin: 14 qubits is more than the limit of 12

@@ -37,3 +37,11 @@ benchmarks/qec/*.qlin
   those, the generator's tables equal dynamarq's
   (bench/test_gen_repetition.py). The _noisy variants use the same noise
   insertion as benchmarks/dynamarq/*_noisy.qlin.
+  surface3_*.qlin: output of bench/gen_surface.py: the rotated distance-3
+  surface code ([[9,1,3]]), in the construction of dynamarq's Steane code
+  (|1> and |+> inputs, one round of 4 Z and 4 X checks, minimum-weight
+  lookup decoders, logical readout on one more qubit). dynamarq has no
+  surface code. The encoder is synthesized from the stabilizer list by
+  Qiskit. bench/test_gen_surface.py checks the checks and logical
+  operators, the correction of every weight-1 error, and the logical
+  readout with no error and with each single X or Z error (Aer).

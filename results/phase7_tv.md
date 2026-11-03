@@ -6,7 +6,7 @@ fast path, for t = 0, 1, 2. checkBlock_sound and checkFP_sound cover a
 passing job (standard axioms only). Simulation checks the sink step
 itself, not this run.
 
-- 428 of 428 jobs checked
+- 456 of 456 jobs checked
 - Jobs not passing: 0
 
 

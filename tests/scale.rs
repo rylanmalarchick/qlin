@@ -112,17 +112,18 @@ fn certifiers_hold_past_twelve_qubits() {
         "variants {variants}, searched {searched}, leaves {leaves_checked} checked \
          {leaves_unchecked} unchecked, unsupported {unsupported:?}"
     );
-    // Pinned. 15 benchmarks past 12 qubits: steane, steane_noisy, the 12
-    // repetition codes of benchmarks/qec, and qft-adder-quantum_7, which
-    // uses non-Clifford gates on entangled qubits. 14 x 7 variants (M0,
-    // plus t = 0, 1, 2 with and without the sink). None has a defer
-    // candidate (their conditions read several bits), so the exhaustive
-    // search and branch and bound each check one leaf per benchmark.
+    // Pinned. 19 benchmarks past 12 qubits: steane, steane_noisy, the 12
+    // repetition codes and the 4 surface codes of benchmarks/qec, and
+    // qft-adder-quantum_7, which uses non-Clifford gates on entangled
+    // qubits. 18 x 7 variants (M0, plus t = 0, 1, 2 with and without the
+    // sink). None has a defer candidate (their conditions read several
+    // bits), so the exhaustive search and branch and bound each check one
+    // leaf per benchmark.
     assert_eq!(
         unsupported,
         vec!["benchmarks/jeff/qft-adder-quantum_7.qlin"]
     );
-    assert_eq!(variants, 98);
-    assert_eq!(searched, 14);
-    assert_eq!((leaves_checked, leaves_unchecked), (28, 0));
+    assert_eq!(variants, 126);
+    assert_eq!(searched, 18);
+    assert_eq!((leaves_checked, leaves_unchecked), (36, 0));
 }

@@ -5,22 +5,22 @@ expected makespan (ns) over exact outcome probabilities from |0...0>
 (dense up to 12 qubits, stabilizer past that). t_branch classes come
 from notes/cost-sources.txt. Switch cost: table = 1 decision per
 switch, tree = 1 per switch bit, chain = 1 per compare.
-61 benchmarks.
+65 benchmarks.
 
 ## Summary
 
 | class | t_branch (ns) | switch | gain > 0 | gain >= 10% | largest gain |
 |---|---|---|---|---|---|
-| none | 0 | table | 6 | 4 | 16.0% (qec/repetition11_1_noisy) |
-| qubic | 14 | table | 10 | 8 | 80.2% (qec/repetition11_1_noisy) |
-| qubic | 14 | tree | 10 | 7 | 79.1% (qec/repetition11_1_noisy) |
-| qubic | 14 | chain | 10 | 8 | 78.0% (qec/repetition11_1_noisy) |
-| qick | 42 | table | 9 | 9 | 92.0% (qec/repetition11_1_noisy) |
-| qick | 42 | tree | 9 | 9 | 91.2% (qec/repetition11_0_noisy) |
-| qick | 42 | chain | 9 | 9 | 89.4% (qec/repetition11_1_noisy) |
-| ibm | 3450 | table | 11 | 11 | 99.8% (qec/repetition11_0_noisy) |
-| ibm | 3450 | tree | 11 | 11 | 98.9% (qec/repetition11_0_noisy) |
-| ibm | 3450 | chain | 11 | 11 | 96.9% (qec/repetition11_0_noisy) |
+| none | 0 | table | 7 | 4 | 16.0% (qec/repetition11_1_noisy) |
+| qubic | 14 | table | 11 | 8 | 80.2% (qec/repetition11_1_noisy) |
+| qubic | 14 | tree | 11 | 7 | 79.1% (qec/repetition11_1_noisy) |
+| qubic | 14 | chain | 11 | 8 | 78.0% (qec/repetition11_1_noisy) |
+| qick | 42 | table | 11 | 11 | 92.0% (qec/repetition11_1_noisy) |
+| qick | 42 | tree | 11 | 10 | 91.2% (qec/repetition11_0_noisy) |
+| qick | 42 | chain | 11 | 10 | 89.4% (qec/repetition11_1_noisy) |
+| ibm | 3450 | table | 13 | 13 | 99.8% (qec/repetition11_0_noisy) |
+| ibm | 3450 | tree | 13 | 13 | 98.9% (qec/repetition11_0_noisy) |
+| ibm | 3450 | chain | 13 | 13 | 96.9% (qec/repetition11_0_noisy) |
 
 ## none, t_branch = 0 ns, switch = table
 
@@ -32,6 +32,7 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition11_1_noisy | 22 | 4375 | source | 3674 | sink_fast_t0 | 16.0% |
 | qec/repetition7_1_noisy | 14 | 3559 | source | 3126 | sink_fast_t0 | 12.2% |
 | qec/repetition9_1_noisy | 18 | 3967 | source | 3400 | sink_fast_t0 | 14.3% |
+| qec/surface3_0_noisy | 19 | 3756 | source | 3488 | sink_fast_t0 | 7.1% |
 
 ## qubic, t_branch = 14 ns, switch = table
 
@@ -47,6 +48,7 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 4438 | source | 3150 | sink_fast_t6 | 29.0% |
 | qec/repetition9_0_noisy | 18 | 6890 | bqcp | 3414 | fast_t6 | 50.5% |
 | qec/repetition9_1_noisy | 18 | 7534 | source | 3423 | sink_fast_t6 | 54.6% |
+| qec/surface3_0_noisy | 19 | 3924 | source | 3549 | sink_fast_t3 | 9.6% |
 
 ## qubic, t_branch = 14 ns, switch = tree
 
@@ -62,6 +64,7 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 4438 | source | 3284 | sink_fast_t6 | 26.0% |
 | qec/repetition9_0_noisy | 18 | 6890 | bqcp | 3512 | fast_t6 | 49.0% |
 | qec/repetition9_1_noisy | 18 | 7534 | source | 3599 | sink_fast_t6 | 52.2% |
+| qec/surface3_0_noisy | 19 | 3924 | source | 3710 | sink_fast_t3 | 5.4% |
 
 ## qubic, t_branch = 14 ns, switch = chain
 
@@ -77,6 +80,7 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 4438 | source | 3228 | sink_fast_t2 | 27.3% |
 | qec/repetition9_0_noisy | 18 | 6890 | bqcp | 3568 | fast_t6 | 48.2% |
 | qec/repetition9_1_noisy | 18 | 7534 | source | 3603 | sink_fast_t6 | 52.2% |
+| qec/surface3_0_noisy | 19 | 3924 | source | 3563 | sink_fast_t2 | 9.2% |
 
 ## qick, t_branch = 42 ns, switch = table
 
@@ -91,6 +95,8 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 6202 | source | 3201 | sink_fast_t6 | 48.4% |
 | qec/repetition9_0_noisy | 18 | 14030 | bqcp | 3442 | fast_t6 | 75.5% |
 | qec/repetition9_1_noisy | 18 | 14674 | source | 3479 | sink_fast_t6 | 76.3% |
+| qec/surface3_0_noisy | 19 | 4748 | source | 3670 | sink_fast_t3 | 22.7% |
+| qec/surface3_1_noisy | 19 | 4392 | bqcp | 3943 | sink_fast_t3 | 10.2% |
 
 ## qick, t_branch = 42 ns, switch = tree
 
@@ -105,6 +111,8 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 6202 | source | 3621 | sink_fast_t6 | 41.6% |
 | qec/repetition9_0_noisy | 18 | 14030 | bqcp | 3736 | fast_t6 | 73.4% |
 | qec/repetition9_1_noisy | 18 | 14674 | source | 4020 | sink_fast_t6 | 72.6% |
+| qec/surface3_0_noisy | 19 | 4748 | source | 4094 | fast_t4 | 13.8% |
+| qec/surface3_1_noisy | 19 | 4392 | bqcp | 4364 | fast_t4 | 0.6% |
 
 ## qick, t_branch = 42 ns, switch = chain
 
@@ -119,6 +127,8 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 6202 | source | 3450 | sink_fast_t2 | 44.4% |
 | qec/repetition9_0_noisy | 18 | 14030 | bqcp | 3903 | fast_t6 | 72.2% |
 | qec/repetition9_1_noisy | 18 | 14674 | source | 4032 | sink_fast_t6 | 72.5% |
+| qec/surface3_0_noisy | 19 | 4748 | source | 3750 | sink_fast_t2 | 21.0% |
+| qec/surface3_1_noisy | 19 | 4392 | bqcp | 4226 | sink_fast_t1 | 3.8% |
 
 ## ibm, t_branch = 3450 ns, switch = table
 
@@ -135,6 +145,8 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 220906 | source | 7009 | fast_t6 | 96.8% |
 | qec/repetition9_0_noisy | 18 | 883070 | bqcp | 6890 | fast_t6 | 99.2% |
 | qec/repetition9_1_noisy | 18 | 883714 | source | 7457 | fast_t6 | 99.2% |
+| qec/surface3_0_noisy | 19 | 106988 | source | 7208 | fast_t4 | 93.3% |
+| qec/surface3_1_noisy | 19 | 106616 | bqcp | 7478 | fast_t4 | 93.0% |
 
 ## ibm, t_branch = 3450 ns, switch = tree
 
@@ -151,6 +163,8 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 220906 | source | 24259 | fast_t6 | 89.0% |
 | qec/repetition9_0_noisy | 18 | 883070 | bqcp | 31040 | fast_t6 | 96.5% |
 | qec/repetition9_1_noisy | 18 | 883714 | source | 31607 | fast_t6 | 96.4% |
+| qec/surface3_0_noisy | 19 | 106988 | source | 31358 | fast_t4 | 70.7% |
+| qec/surface3_1_noisy | 19 | 106616 | bqcp | 31628 | fast_t4 | 70.3% |
 
 ## ibm, t_branch = 3450 ns, switch = chain
 
@@ -167,7 +181,9 @@ switch, tree = 1 per switch bit, chain = 1 per compare.
 | qec/repetition7_1_noisy | 14 | 220906 | source | 20811 | fast_t6 | 90.6% |
 | qec/repetition9_0_noisy | 18 | 883070 | bqcp | 44741 | fast_t6 | 94.9% |
 | qec/repetition9_1_noisy | 18 | 883714 | source | 45308 | fast_t6 | 94.9% |
+| qec/surface3_0_noisy | 19 | 106988 | source | 31148 | fast_t2 | 70.9% |
+| qec/surface3_1_noisy | 19 | 106616 | bqcp | 31415 | fast_t2 | 70.5% |
 
 ## Skipped
 
-- jeff/qft-adder-quantum_7: qlin lat /home/rylan/dev/projects/qlin-switch/benchmarks/jeff/qft-adder-quantum_7.qlin: 14 qubits is more than the limit of 12
+- jeff/qft-adder-quantum_7: qlin lat /home/rylan/dev/projects/qlin-surface/benchmarks/jeff/qft-adder-quantum_7.qlin: 14 qubits is more than the limit of 12

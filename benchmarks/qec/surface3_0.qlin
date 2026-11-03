@@ -1,0 +1,189 @@
+qubits 18
+bits 18
+h q2
+cx q2 q4
+cx q2 q8
+h q0
+h q1
+cx q0 q1
+cx q0 q8
+cx q0 q6
+swap q1 q8
+cx q1 q4
+h q3
+swap q6 q3
+cx q6 q5
+cx q3 q5
+swap q7 q5
+cx q8 q7
+swap q4 q8
+cx q4 q8
+swap q8 q5
+cx q5 q8
+x q0
+x q3
+x q6
+cx q1 q9
+cx q2 q9
+cx q4 q9
+cx q5 q9
+cx q3 q10
+cx q4 q10
+cx q6 q10
+cx q7 q10
+cx q0 q11
+cx q3 q11
+cx q5 q12
+cx q8 q12
+h q13
+cx q13 q0
+cx q13 q1
+cx q13 q3
+cx q13 q4
+h q13
+h q14
+cx q14 q4
+cx q14 q5
+cx q14 q7
+cx q14 q8
+h q14
+h q15
+cx q15 q1
+cx q15 q2
+h q15
+h q16
+cx q16 q6
+cx q16 q7
+h q16
+measure q9 -> c10
+measure q10 -> c11
+measure q11 -> c12
+measure q12 -> c13
+measure q13 -> c14
+measure q14 -> c15
+measure q15 -> c16
+measure q16 -> c17
+if c10 & !c11 & !c12 & !c13 {
+  x q1
+}
+if !c10 & c11 & !c12 & !c13 {
+  x q6
+}
+if c10 & c11 & !c12 & !c13 {
+  x q4
+}
+if !c10 & !c11 & c12 & !c13 {
+  x q0
+}
+if c10 & !c11 & c12 & !c13 {
+  x q0
+  x q1
+}
+if !c10 & c11 & c12 & !c13 {
+  x q3
+}
+if c10 & c11 & c12 & !c13 {
+  x q1
+  x q3
+}
+if !c10 & !c11 & !c12 & c13 {
+  x q8
+}
+if c10 & !c11 & !c12 & c13 {
+  x q5
+}
+if !c10 & c11 & !c12 & c13 {
+  x q4
+  x q5
+}
+if c10 & c11 & !c12 & c13 {
+  x q5
+  x q6
+}
+if !c10 & !c11 & c12 & c13 {
+  x q0
+  x q8
+}
+if c10 & !c11 & c12 & c13 {
+  x q0
+  x q5
+}
+if !c10 & c11 & c12 & c13 {
+  x q3
+  x q8
+}
+if c10 & c11 & c12 & c13 {
+  x q3
+  x q5
+}
+if c14 & !c15 & !c16 & !c17 {
+  z q0
+}
+if !c14 & c15 & !c16 & !c17 {
+  z q5
+}
+if c14 & c15 & !c16 & !c17 {
+  z q4
+}
+if !c14 & !c15 & c16 & !c17 {
+  z q2
+}
+if c14 & !c15 & c16 & !c17 {
+  z q1
+}
+if !c14 & c15 & c16 & !c17 {
+  z q1
+  z q4
+}
+if c14 & c15 & c16 & !c17 {
+  z q2
+  z q4
+}
+if !c14 & !c15 & !c16 & c17 {
+  z q6
+}
+if c14 & !c15 & !c16 & c17 {
+  z q0
+  z q6
+}
+if !c14 & c15 & !c16 & c17 {
+  z q7
+}
+if c14 & c15 & !c16 & c17 {
+  z q4
+  z q6
+}
+if !c14 & !c15 & c16 & c17 {
+  z q2
+  z q6
+}
+if c14 & !c15 & c16 & c17 {
+  z q1
+  z q6
+}
+if !c14 & c15 & c16 & c17 {
+  z q2
+  z q7
+}
+if c14 & c15 & c16 & c17 {
+  z q1
+  z q7
+}
+x q0
+x q3
+x q6
+h q17
+cz q0 q17
+cz q1 q17
+cz q2 q17
+h q17
+measure q17 -> c0
+measure q0 -> c1
+measure q1 -> c2
+measure q2 -> c3
+measure q3 -> c4
+measure q4 -> c5
+measure q5 -> c6
+measure q6 -> c7
+measure q7 -> c8
+measure q8 -> c9

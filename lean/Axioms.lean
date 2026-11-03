@@ -21,6 +21,7 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.denB_congr
 -- R3
 #print axioms Qlin.fastpath_step
+#print axioms Qlin.fastpath_sound
 #print axioms Qlin.sink_past_disjoint
 #print axioms Qlin.sink_past_clifford
 #print axioms Qlin.Pauli.conj_h

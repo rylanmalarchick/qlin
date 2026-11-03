@@ -11,8 +11,9 @@ and the rest of the program by one Switch over `G`:
 
 `fastpath_step` shows this Switch equals the group followed by the rest,
 for any case set, as long as every case body equals "selected arms, then
-rest". Induction over the groups gives the whole construction: the case
-body of the next group is again such a Switch.
+rest". `fastpath_sound` extends it to the whole construction by induction
+over `FastPathOf`: the case body of the next group is again such a
+Switch.
 -/
 
 namespace Qlin
@@ -118,6 +119,13 @@ build from `P`, for any groups, cases, and budget, denotes the same as
 `P`. Induction over `FastPathOf` from `fastpath_step`. -/
 theorem fastpath_sound (I : Interp D) {P Q : List Op} (h : FastPathOf P Q) (s : State D) :
     denB I Q s = denB I P s := by
-  sorry
+  induction h generalizing s with
+  | refl P => rfl
+  | cons o _ ih =>
+    simp only [denB]
+    exact ih _
+  | dispatch G grp rest cases hbits hw _ ih =>
+    simp only [denB]
+    exact fastpath_step I G grp rest cases hbits hw (fun p hp t => ih p hp t) s
 
 end Qlin

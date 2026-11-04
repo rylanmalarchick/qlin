@@ -86,6 +86,22 @@ def mismatches(out: Path) -> list[str]:
                     f"{nums[key + 'Ten']} | {nums[key + 'Max']}% (")
             if want not in sw:
                 bad.append(f"switch {c} {s}")
+    qb = (ROOT / "results" / "qubic_dispatch.md").read_text()
+    if f"largest absolute residual {nums['nQubicResid']} cycles" not in qb:
+        bad.append("qubic residual")
+    kinds = {l.split("|")[1].strip(): float(l.split("|")[2]) for l in qb.splitlines()
+             if l.startswith("| cond_") or l.startswith("| jump ")}
+    if (f"{kinds['cond_taken']:.1f}" != nums["nQubicCond"]
+            or f"{kinds['jump']:.1f}" != nums["nQubicJump"]):
+        bad.append("qubic cycles per kind")
+    rows = {tuple(c.strip() for c in l.split("|")[1:6]): l.split("|")[6].strip()
+            for l in qb.splitlines() if l.startswith("| dynamarq/")}
+    for b, v, key in [("repetition5_1_noisy", "source", "nQubicRepSource"),
+                      ("repetition5_1_noisy", "chain", "nQubicRepChain"),
+                      ("five_qubit_code_noisy", "source", "nQubicFiveSource"),
+                      ("five_qubit_code_noisy", "tree", "nQubicFiveTree")]:
+        if f"{float(rows[(f'dynamarq/{b}', '2', '4', '11', v)]):.1f}" != nums[key]:
+            bad.append(f"qubic {b} {v}")
     return bad
 
 
@@ -143,3 +159,17 @@ def test_a_planted_wrong_switch_gain_is_caught(tmp_path):
     emit(out, res)
     # The largest QICK tree gain falls from 91.2% (this row) to 90.7%.
     assert mismatches(out) == ["switch qick tree"]
+
+
+def test_a_planted_wrong_qubic_cycle_count_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "qubic_dispatch.json"
+    d = json.loads(p.read_text())
+    for r in d["rows"]:
+        if (r["benchmark"], r["t"], r["variant"]) == ("dynamarq/repetition5_1_noisy", 2, "chain"):
+            r["expected_cycles"] = 99.0
+    p.write_text(json.dumps(d))
+    out = tmp_path / "gen"
+    emit(out, res)
+    assert mismatches(out) == ["qubic repetition5_1_noisy chain"]

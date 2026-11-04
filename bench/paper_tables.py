@@ -193,6 +193,23 @@ def switch_tables() -> tuple[str, str, dict]:
     return summary, rowtab, nums
 
 
+def qubic() -> dict:
+    """QubiC RTL dispatch cycles (results/qubic_dispatch.json)."""
+    d = json.loads((RESULTS / "qubic_dispatch.json").read_text())
+    fit = d["fit"]
+    row = {(r["benchmark"], r["t"], r["variant"]): r for r in d["rows"]}
+    rep5 = "dynamarq/repetition5_1_noisy"
+    five = "dynamarq/five_qubit_code_noisy"
+    return {"cond": fit["cycles_per"]["cond_taken"], "jump": fit["cycles_per"]["jump"],
+            "resid": fit["max_abs_residual"], "points": fit["points"],
+            "rep_source": row[(rep5, 2, "source")]["expected_cycles"],
+            "rep_chain": row[(rep5, 2, "chain")]["expected_cycles"],
+            "rep_source_worst": row[(rep5, 2, "source")]["worst_cycles"],
+            "rep_chain_worst": row[(rep5, 2, "chain")]["worst_cycles"],
+            "five_source": row[(five, 2, "source")]["expected_cycles"],
+            "five_tree": row[(five, 2, "tree")]["expected_cycles"]}
+
+
 def c6b() -> dict:
     """C6b (amplified ranking test), by the fixed analysis of bench/analyze_c6b.py,
     plus a post hoc reading: the branch cost at which the block model gives the
@@ -246,7 +263,10 @@ def main(out: Path) -> None:
              + macros("nBase", n1) + macros("nDefer", n2) + macros("nFast", n3)
              + macros("nSelene", selene()) + macros("nIbm", n4, fmt)
              + macros("nCsixb", c6b(), {"t19_p": ".4f", "wilcoxon_p": ".4f", "sw_p": ".4f"})
-             + macros("nSwitch", n5, {"max": ".1f", "tb": "g"}))
+             + macros("nSwitch", n5, {"max": ".1f", "tb": "g"})
+             + macros("nQubic", qubic(), {"cond": ".1f", "jump": ".1f", "resid": ".3f",
+                                          "rep_source": ".1f", "rep_chain": ".1f",
+                                          "five_source": ".1f", "five_tree": ".1f"}))
     (out / "numbers.tex").write_text("\n".join(lines) + "\n")
     print(f"wrote {out}/tables/*.tex and numbers.tex ({len(lines) - 1} macros)")
 

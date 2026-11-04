@@ -1,3 +1,7 @@
 /target
 /bench/.venv
 __pycache__/
+
+# cocotb outputs of bench/qubic (bench/run_qubic.py)
+bench/qubic/sim_build/
+bench/qubic/results.xml

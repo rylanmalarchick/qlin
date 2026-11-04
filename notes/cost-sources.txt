@@ -41,6 +41,12 @@ T_BRANCH.qick = 42 | paper | arXiv:2110.00557 (QICK), latency table: "Conditiona
 T_BRANCH.qubic = 14 | paper | arXiv:2309.10333 (QubiC 2.0): "most register writes/control flow instructions execute in 4-7 clock cycles" at 500 MHz, so 8 to 14 ns; the upper end is used
 T_BRANCH.ibm = 3450 | measured | ibm_kingston 2026-09-27, 3.45 us per if_else block, 95% CI 0.32 to 6.58 us (results/phase4_ibm.md); an x gate per block is included
 
+  Cross-check, measured (results/qubic_dispatch.md, 2026-11-04): on the
+  QubiC distributed processor RTL a conditional jump takes 6 cycles (12 ns
+  at 500 MHz), taken or not, and an unconditional jump 4 cycles (8 ns). A
+  compiled `if` takes both (QubiC has no not-equal), 20 ns. The sweep keeps
+  T_BRANCH.qubic = 14 ns from the paper; RTL simulation, no qubits.
+
   Not a t_branch source: Quantum Machines OPX+ "conditional feedback
   224 ns" (vendor page, notes/prior-work.txt) is a full readout-to-pulse
   latency, which maps to t_ff.

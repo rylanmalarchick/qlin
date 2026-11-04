@@ -14,7 +14,7 @@ Requires Rust 1.85 or later.
 ```
 cargo build --release
 cargo test
-cargo test --release -- --ignored   # full certifiers, about 8 minutes
+cargo test --release -- --ignored   # full certifiers
 ```
 
 ## Command line
@@ -37,7 +37,8 @@ qlin sweep [--tmeas-list ..] [--tff-list ..] [--tbranch-list ..] FILE.qlin
 qlin tv-export [--t T] [--sink] FILE.qlin
                                         # jobs for the Lean output checker
 # MODEL: [--preset heron_like|heron_kingston] [--model ideal|block]
-#        [--tff NS] [--tbranch NS] [--tmeas NS] [--t1q NS] [--t2q NS] [--treset NS]
+#        [--switch-cost table|tree|chain] [--tff NS] [--tbranch NS]
+#        [--tmeas NS] [--t1q NS] [--t2q NS] [--treset NS]
 ```
 
 `qlin --help` lists every option. The cost presets are in `src/cost.rs`.
@@ -52,8 +53,9 @@ qubits. A program that neither backend can run is reported as skipped.
 
 `lean/` holds a Lean 4 model of the IR and its semantics, and proofs that
 the rewrite rules (M0, fast path, Pauli sink, direct defer) are sound in a
-density-matrix model. It also holds a checker, proved sound, for the
-outputs of the M0 and fast-path passes. `lean/Axioms.lean` lists the
+density-matrix model, and that an M0 step never increases the replay
+latency. It also holds a checker, proved sound, for the outputs of the M0
+and fast-path passes. `lean/Axioms.lean` lists the
 theorems that `scripts/lean_axioms.sh` checks.
 
 ```

@@ -36,6 +36,8 @@ usage:
   qlin lat [MODEL] [--noise-qubits I,J] FILE.qlin
                                           expected latency as JSON
   qlin traces FILE.qlin                   every per-outcome trace as JSON
+  qlin records FILE.qlin                  exact outcome records (probability and
+                                          the outcomes of each bit) as JSON
   qlin tv-export [--t T] [--sink] [--noise-qubits I,J] FILE.qlin
                                           translation-validation jobs for
                                           lean/QlinCheck.lean: source -> M0 normal
@@ -529,6 +531,25 @@ fn run(args: &[String]) -> Result<String, String> {
                 None => serde_json::to_string(&lat(&load(file)?, &f)?).map_err(|e| e.to_string()),
                 Some(n) => sampled_lat(&load(file)?, &f, n, f.seed.unwrap_or(1)),
             }
+        }
+        "records" => {
+            let [file] = rest else {
+                return Err(USAGE.into());
+            };
+            let prog = load(file)?;
+            let recs = records(&prog, SIM_LIMIT).map_err(|e| format!("{file}: {e}"))?;
+            let out: Vec<serde_json::Value> = recs
+                .iter()
+                .map(|r| {
+                    let outcomes: serde_json::Map<String, serde_json::Value> = r
+                        .outcomes
+                        .iter()
+                        .map(|(b, v)| (b.0.to_string(), serde_json::json!(v)))
+                        .collect();
+                    serde_json::json!({ "prob": r.prob, "outcomes": outcomes, "truncated": r.truncated })
+                })
+                .collect();
+            serde_json::to_string(&out).map_err(|e| e.to_string())
         }
         "sim" => {
             let [file] = rest else {

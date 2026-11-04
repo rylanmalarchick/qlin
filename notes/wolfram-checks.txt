@@ -24,3 +24,21 @@ Label in the claims ledger: Wolfram-checked.
             0.32 to 6.58 (15 points). Wolfram flags the kept differences as
             not normal (normality test p 0.035), so the t-test p 0.046
             against 19 us is weaker than stated before.
+
+2026-11-03  notes/wolfram/c6_stats.wl (Wolfram Engine 15.0, MCP evaluator;
+            wolframscript on this host reported a license problem the same
+            day, the running MCP kernel did not)
+            Recomputes both preregistered C6 analyses from the result JSON.
+            60 pairs (notes/c6-prereg.txt): 0 dropped, mean 21.0633, SE
+            15.4085, 95% CI -9.76897 to 51.8957, t vs 19 us p 0.89393,
+            Wilcoxon p 0.737661 (scipy 0.7349: exact vs normal
+            approximation), median -1.881, Shapiro-Wilk p 1.2e-10. All
+            match bench/analyze_c6.py.
+            C6b (notes/c6b-prereg.txt): 15 rounds, 15 with both slopes, 4
+            jobs dropped, gap slope 6.97117, SE 7.30169, 95% CI -8.6894 to
+            22.6317, t vs 19.22 p 0.115613, Wilcoxon p 0.798273 (scipy
+            0.8040), Shapiro-Wilk p 0.0133444. All match
+            results/phase7_c6b_analysis.txt. Wolfram flags the gap slopes as
+            not normal (its TTest pre-check p 0.00057), so the C6b t-test
+            is weaker than its p suggests; the Wilcoxon test gives the same
+            verdict (not resolved).

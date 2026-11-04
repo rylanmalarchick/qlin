@@ -26,6 +26,7 @@ qlin json FILE.qlin                     # program tree as JSON
 qlin stats [--json] FILE.qlin           # program metrics
 qlin sim FILE.qlin                      # output distribution from |0...0>
 qlin traces FILE.qlin                   # every per-outcome trace
+qlin records FILE.qlin                  # exact outcome records with probabilities
 qlin lat [MODEL] FILE.qlin              # expected latency
 qlin opt [MODEL] [--check] [--json] FILE.qlin
                                         # M0 normal form, then the defer search

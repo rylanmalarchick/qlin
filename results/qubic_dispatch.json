@@ -1,0 +1,3135 @@
+{
+ "fit": {
+  "cycles_per": {
+   "cond_taken": 6.0198732645772095,
+   "cond_not": 6.002554710454796,
+   "jump": 3.99611682181742,
+   "mark": 3.995179246807794,
+   "base": 0.9410419089030126
+  },
+  "max_abs_residual": 0.9745369921366702,
+  "points": 312
+ },
+ "rows": [
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 1,
+   "variant": "source",
+   "bits": 2,
+   "cases": 3,
+   "ifs": 3,
+   "expected_cycles": 30.952499999999997,
+   "expected_decisions": 3.0,
+   "worst_cycles": 31,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 31,
+     "cond_taken": 0,
+     "cond_not": 3,
+     "jump": 3,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 30,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 1,
+   "variant": "chain",
+   "bits": 2,
+   "cases": 3,
+   "ifs": 3,
+   "expected_cycles": 14.182500000000001,
+   "expected_decisions": 1.3800000000000001,
+   "worst_cycles": 52,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 52,
+     "cond_taken": 1,
+     "cond_not": 5,
+     "jump": 3,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 1,
+   "variant": "tree",
+   "bits": 2,
+   "cases": 3,
+   "ifs": 3,
+   "expected_cycles": 19.3275,
+   "expected_decisions": 2.2375,
+   "worst_cycles": 52,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 17,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 21,
+     "cond_taken": 2,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 27,
+     "cond_taken": 2,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 52,
+     "cond_taken": 2,
+     "cond_not": 4,
+     "jump": 3,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 2,
+   "variant": "source",
+   "bits": 2,
+   "cases": 4,
+   "ifs": 3,
+   "expected_cycles": 30.952499999999997,
+   "expected_decisions": 3.0,
+   "worst_cycles": 31,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 31,
+     "cond_taken": 0,
+     "cond_not": 3,
+     "jump": 3,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 30,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 2,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 2,
+   "variant": "chain",
+   "bits": 2,
+   "cases": 4,
+   "ifs": 3,
+   "expected_cycles": 13.280000000000001,
+   "expected_decisions": 1.2850000000000001,
+   "worst_cycles": 33,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition3_1_noisy",
+   "t": 2,
+   "variant": "tree",
+   "bits": 2,
+   "cases": 4,
+   "ifs": 3,
+   "expected_cycles": 18.14,
+   "expected_decisions": 2.095,
+   "worst_cycles": 27,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.8574999999999999,
+     "cycles": 17,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.0475,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.047500000000000035,
+     "cycles": 21,
+     "cond_taken": 2,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.047500000000000014,
+     "cycles": 27,
+     "cond_taken": 2,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 1,
+   "variant": "source",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 151.08799374999998,
+   "expected_decisions": 15.000000000000002,
+   "worst_cycles": 155,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 154,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 1,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 37.12618750000002,
+   "expected_decisions": 3.879568750000002,
+   "worst_cycles": 189,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 37,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 1,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 40.91387500000002,
+   "expected_decisions": 4.510850000000001,
+   "worst_cycles": 183,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 17,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 31,
+     "cond_taken": 2,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 31,
+     "cond_taken": 3,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 2,
+   "variant": "source",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 151.08799374999998,
+   "expected_decisions": 15.000000000000002,
+   "worst_cycles": 155,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 154,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 2,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 21.296575000000008,
+   "expected_decisions": 2.444950000000001,
+   "worst_cycles": 225,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 37,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 75,
+     "cond_taken": 1,
+     "cond_not": 10,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 73,
+     "cond_taken": 1,
+     "cond_not": 9,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 57,
+     "cond_taken": 1,
+     "cond_not": 7,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 67,
+     "cond_taken": 1,
+     "cond_not": 8,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 55,
+     "cond_taken": 1,
+     "cond_not": 6,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 45,
+     "cond_taken": 1,
+     "cond_not": 5,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_0_noisy",
+   "t": 2,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 27.569500000000005,
+   "expected_decisions": 3.4904375000000005,
+   "worst_cycles": 189,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 23,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999998,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562499999999996,
+     "cycles": 37,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.04073125000000001,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.002256250000000002,
+     "cycles": 43,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 37,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.04073125000000003,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 3,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000006,
+     "cycles": 39,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.002256250000000002,
+     "cycles": 37,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 37,
+     "cond_taken": 4,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000003,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 39,
+     "cond_taken": 4,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000003,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 1,
+   "variant": "source",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 151.08799374999998,
+   "expected_decisions": 15.0,
+   "worst_cycles": 155,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 154,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 1,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 37.126187500000015,
+   "expected_decisions": 3.8795687500000016,
+   "worst_cycles": 189,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 37,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 189,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 1,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 40.91387500000001,
+   "expected_decisions": 4.510850000000001,
+   "worst_cycles": 183,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 17,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 31,
+     "cond_taken": 2,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 31,
+     "cond_taken": 3,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 179,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 183,
+     "cond_taken": 3,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 2,
+   "variant": "source",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 151.08799374999998,
+   "expected_decisions": 15.0,
+   "worst_cycles": 155,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 154,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 155,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 2,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 21.296575000000004,
+   "expected_decisions": 2.444950000000001,
+   "worst_cycles": 225,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 11,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 37,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 75,
+     "cond_taken": 1,
+     "cond_not": 10,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 31,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 73,
+     "cond_taken": 1,
+     "cond_not": 9,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 57,
+     "cond_taken": 1,
+     "cond_not": 7,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 67,
+     "cond_taken": 1,
+     "cond_not": 8,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 55,
+     "cond_taken": 1,
+     "cond_not": 6,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 45,
+     "cond_taken": 1,
+     "cond_not": 5,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 225,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/repetition5_1_noisy",
+   "t": 2,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 27.569500000000005,
+   "expected_decisions": 3.4904375000000005,
+   "worst_cycles": 189,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.7737812499999999,
+     "cycles": 23,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.04073124999999999,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.0022562500000000004,
+     "cycles": 37,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 3,
+     "p": 0.040731250000000004,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.0022562500000000026,
+     "cycles": 43,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 5,
+     "p": 0.002256250000000001,
+     "cycles": 37,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 6,
+     "p": 0.040731250000000024,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.002256250000000001,
+     "cycles": 189,
+     "cond_taken": 3,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 8,
+     "p": 0.04073125000000005,
+     "cycles": 39,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.0022562500000000026,
+     "cycles": 37,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 10,
+     "p": 0.0022562500000000017,
+     "cycles": 37,
+     "cond_taken": 4,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 2
+    },
+    {
+     "s": 11,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 12,
+     "p": 0.04073125000000004,
+     "cycles": 39,
+     "cond_taken": 4,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0022562500000000017,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 14,
+     "p": 0.002256250000000002,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    },
+    {
+     "s": 15,
+     "p": 0.0022562500000000013,
+     "cycles": 189,
+     "cond_taken": 4,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 2
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 1,
+   "variant": "source",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 150.9374999999984,
+   "expected_decisions": 14.999999999999842,
+   "worst_cycles": 151,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 150,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 1,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 135.56249999999847,
+   "expected_decisions": 14.687499999999835,
+   "worst_cycles": 185,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 185,
+     "cond_taken": 0,
+     "cond_not": 20,
+     "jump": 16,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 184,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 185,
+     "cond_taken": 1,
+     "cond_not": 19,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 15,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 1,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 5,
+   "ifs": 15,
+   "expected_cycles": 127.31249999999856,
+   "expected_decisions": 13.31249999999985,
+   "worst_cycles": 173,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 173,
+     "cond_taken": 0,
+     "cond_not": 18,
+     "jump": 16,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 172,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 173,
+     "cond_taken": 1,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 173,
+     "cond_taken": 2,
+     "cond_not": 16,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 27,
+     "cond_taken": 2,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 27,
+     "cond_taken": 3,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 2,
+   "variant": "source",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 150.9374999999984,
+   "expected_decisions": 14.999999999999842,
+   "worst_cycles": 151,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 151,
+     "cond_taken": 0,
+     "cond_not": 15,
+     "jump": 15,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 150,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 151,
+     "cond_taken": 1,
+     "cond_not": 14,
+     "jump": 14,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 2,
+   "variant": "chain",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 99.93749999999875,
+   "expected_decisions": 12.249999999999847,
+   "worst_cycles": 221,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 221,
+     "cond_taken": 0,
+     "cond_not": 26,
+     "jump": 16,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 221,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 220,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 75,
+     "cond_taken": 1,
+     "cond_not": 10,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 221,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 69,
+     "cond_taken": 1,
+     "cond_not": 9,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 57,
+     "cond_taken": 1,
+     "cond_not": 7,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 39,
+     "cond_taken": 1,
+     "cond_not": 4,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 221,
+     "cond_taken": 1,
+     "cond_not": 25,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 63,
+     "cond_taken": 1,
+     "cond_not": 8,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 51,
+     "cond_taken": 1,
+     "cond_not": 6,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 45,
+     "cond_taken": 1,
+     "cond_not": 5,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 21,
+     "cond_taken": 1,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 15,
+     "cond_taken": 1,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  },
+  {
+   "benchmark": "dynamarq/five_qubit_code_noisy",
+   "t": 2,
+   "variant": "tree",
+   "bits": 4,
+   "cases": 11,
+   "ifs": 15,
+   "expected_cycles": 79.687499999999,
+   "expected_decisions": 8.87499999999989,
+   "worst_cycles": 185,
+   "per_value": [
+    {
+     "s": 0,
+     "p": 0.06249999999999853,
+     "cycles": 179,
+     "cond_taken": 0,
+     "cond_not": 19,
+     "jump": 16,
+     "mark": 0
+    },
+    {
+     "s": 1,
+     "p": 0.062499999999998945,
+     "cycles": 179,
+     "cond_taken": 1,
+     "cond_not": 18,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 2,
+     "p": 0.062499999999999244,
+     "cycles": 178,
+     "cond_taken": 1,
+     "cond_not": 18,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 3,
+     "p": 0.062499999999999264,
+     "cycles": 27,
+     "cond_taken": 1,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 4,
+     "p": 0.06249999999999942,
+     "cycles": 179,
+     "cond_taken": 1,
+     "cond_not": 18,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 5,
+     "p": 0.06249999999999949,
+     "cycles": 33,
+     "cond_taken": 1,
+     "cond_not": 3,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 6,
+     "p": 0.06249999999999943,
+     "cycles": 33,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 7,
+     "p": 0.06249999999999944,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 8,
+     "p": 0.06249999999999945,
+     "cycles": 185,
+     "cond_taken": 3,
+     "cond_not": 17,
+     "jump": 15,
+     "mark": 1
+    },
+    {
+     "s": 9,
+     "p": 0.062499999999999487,
+     "cycles": 39,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 10,
+     "p": 0.06249999999999944,
+     "cycles": 33,
+     "cond_taken": 2,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 11,
+     "p": 0.06249999999999946,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 12,
+     "p": 0.062499999999999445,
+     "cycles": 39,
+     "cond_taken": 3,
+     "cond_not": 2,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 13,
+     "p": 0.0624999999999995,
+     "cycles": 33,
+     "cond_taken": 3,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 14,
+     "p": 0.06249999999999944,
+     "cycles": 33,
+     "cond_taken": 4,
+     "cond_not": 0,
+     "jump": 1,
+     "mark": 1
+    },
+    {
+     "s": 15,
+     "p": 0.06249999999999946,
+     "cycles": 39,
+     "cond_taken": 4,
+     "cond_not": 1,
+     "jump": 1,
+     "mark": 1
+    }
+   ]
+  }
+ ]
+}

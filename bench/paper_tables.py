@@ -9,6 +9,7 @@ comes from a file in results/. Nothing is typed in by hand.
 from __future__ import annotations
 
 import csv
+import math
 import json
 import os
 import statistics as st
@@ -193,6 +194,32 @@ def switch_tables() -> tuple[str, str, dict]:
     return summary, rowtab, nums
 
 
+def full_switch() -> dict:
+    """Full-switch ablation (results/phase8_full.csv), no-sink pairs."""
+    rows = list(csv.DictReader(open(RESULTS / "phase8_full.csv")))
+    num = lambda x: None if x in ("", None) else float(x)  # noqa: E731
+    pairs = [r for r in rows if num(r["nosink_margin"]) is not None]
+    tabtree = [num(r["nosink_margin"]) for r in pairs if r["switch"] in ("table", "tree")]
+    chain_wins = [r for r in pairs if r["switch"] == "chain" and num(r["nosink_margin"]) > 0.01
+                  and num(r["nosink_gain_spec"]) >= 0.10]
+    margin = {r["benchmark"].split("/")[-1]: 100 * num(r["nosink_margin"]) for r in chain_wins}
+    sweep = {(r["benchmark"], r["class"], r["switch"]): r
+             for r in csv.DictReader(open(RESULTS / "phase8_switch.csv"))}
+    key = ("qec/repetition11_0_noisy", "qick", "tree")
+    rep = next(r for r in rows if (r["benchmark"], r["class"], r["switch"]) == key)
+    base, m = num(rep["best_baseline"]), int(rep["m"])
+    gain_t = lambda t: 100 * (base - num(sweep[key][f"fast_t{t}"])) / base  # noqa: E731
+    return {"programs": len({r["benchmark"] for r in pairs}),
+            "tabtree_max": 100 * max(tabtree),
+            "chain_wins": len(chain_wins),
+            "steane_margin": margin["steane_noisy"],
+            "surface_margin_lo": min(margin["surface3_0_noisy"], margin["surface3_1_noisy"]),
+            "surface_margin_hi": max(margin["surface3_0_noisy"], margin["surface3_1_noisy"]),
+            "rep_full": 100 * num(rep["nosink_gain_full"]), "rep_full_cases": 2 ** m,
+            "rep_two": gain_t(2), "rep_two_cases": sum(math.comb(m, k) for k in range(3)),
+            "rep_four": gain_t(4), "rep_four_cases": sum(math.comb(m, k) for k in range(5))}
+
+
 def qubic() -> dict:
     """QubiC RTL dispatch cycles (results/qubic_dispatch.json)."""
     d = json.loads((RESULTS / "qubic_dispatch.json").read_text())
@@ -266,7 +293,10 @@ def main(out: Path) -> None:
              + macros("nSwitch", n5, {"max": ".1f", "tb": "g"})
              + macros("nQubic", qubic(), {"cond": ".1f", "jump": ".1f", "resid": ".3f",
                                           "rep_source": ".1f", "rep_chain": ".1f",
-                                          "five_source": ".1f", "five_tree": ".1f"}))
+                                          "five_source": ".1f", "five_tree": ".1f"})
+             + macros("nFull", full_switch(), {k: ".1f" for k in (
+                 "tabtree_max", "steane_margin", "surface_margin_lo", "surface_margin_hi",
+                 "rep_full", "rep_two", "rep_four")}))
     (out / "numbers.tex").write_text("\n".join(lines) + "\n")
     print(f"wrote {out}/tables/*.tex and numbers.tex ({len(lines) - 1} macros)")
 

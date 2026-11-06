@@ -5,6 +5,7 @@ phase runners wrote results/*.md from the same runs with separate code.
 Each emitted value is compared with its report line.
 """
 
+import csv
 import json
 import os
 import re
@@ -102,6 +103,22 @@ def mismatches(out: Path) -> list[str]:
                       ("five_qubit_code_noisy", "tree", "nQubicFiveTree")]:
         if f"{float(rows[(f'dynamarq/{b}', '2', '4', '11', v)]):.1f}" != nums[key]:
             bad.append(f"qubic {b} {v}")
+    fs = (ROOT / "results" / "phase8_full.md").read_text().splitlines()
+    summary = [l.split("|") for l in fs
+               if l.startswith("| ") and l.split("|")[3].strip() in ("table", "tree")
+               and l.split("|")[1].strip() in ("none", "qubic", "qick", "ibm")]
+    if f"{max(float(c[8].split('%')[0]) for c in summary):.1f}" != nums["nFullTabtreeMax"]:
+        bad.append("full table/tree margin")
+    margin = {l.split("|")[1].strip(): l.split("|")[7].strip() for l in fs
+              if l.split("|")[2:4] == [" ibm ", " chain "]}
+    if margin.get("dynamarq/steane_noisy") != f"{nums['nFullSteaneMargin']}%":
+        bad.append("full steane margin")
+    budget = next(l for l in fs if l.startswith("| qec/repetition11_0_noisy | 10 |"))
+    for want in (f"{nums['nFullRepFull']}% ({nums['nFullRepFullCases']})",
+                 f"t=2: {nums['nFullRepTwo']}% ({nums['nFullRepTwoCases']})",
+                 f"t=4: {nums['nFullRepFour']}% ({nums['nFullRepFourCases']})"):
+        if want not in budget:
+            bad.append(f"full budget {want}")
     return bad
 
 
@@ -173,3 +190,20 @@ def test_a_planted_wrong_qubic_cycle_count_is_caught(tmp_path):
     out = tmp_path / "gen"
     emit(out, res)
     assert mismatches(out) == ["qubic repetition5_1_noisy chain"]
+
+
+def test_a_planted_wrong_full_switch_value_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "phase8_full.csv"
+    rows = list(csv.DictReader(open(p)))
+    for r in rows:
+        if (r["benchmark"], r["class"], r["switch"]) == ("dynamarq/steane_noisy", "ibm", "chain"):
+            r["nosink_margin"] = "0.5"
+    with open(p, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    out = tmp_path / "gen"
+    emit(out, res)
+    assert mismatches(out) == ["full steane margin"]

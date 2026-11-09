@@ -925,7 +925,7 @@ private theorem noLaterAt_refl (C : Cost) (R : Record) (g : Finset Bit) (P : Lis
     NoLaterAt C R g P P :=
   fun a b hab _ => runB_mono C R P g g (Finset.Subset.refl _) a b hab
 
-private theorem loopT_noLater (c : Cond) (g : Finset Bit)
+theorem loopT_noLater (c : Cond) (g : Finset Bit)
     (f f' : Finset Bit → TState → TState)
     (H : ∀ g', g' ⊆ g ∪ c.bits → ∀ a b : TState, a.Le b → (f g' b).stopped = false →
       (f' g' a).Le (f g' b)) :
@@ -1119,5 +1119,29 @@ theorem m0Steps_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥
       expectedMakespan s w Q' (fun i => runB C (R i) P g st) :=
   expectedMakespan_le s w Q' _ _ fun i hi =>
     m0Steps_latency C (R i) h g hg st st (TState.Le.refl st) (hrun i hi)
+
+/-! ### Lemmas for the latency checker (`CheckLatency.lean`) -/
+
+theorem runB_append (C : Cost) (R : Record) (l1 l2 : List Op) (g : Finset Bit) (st : TState) :
+    runB C R (l1 ++ l2) g st = runB C R l2 g (runB C R l1 g st) :=
+  runB_append' C R l1 l2 g st
+
+/-- A run that ends not stopped starts not stopped. -/
+theorem run_running {C : Cost} {R : Record} {o : Op} {g : Finset Bit} {b : TState}
+    (h : (run C R o g b).stopped = false) : b.stopped = false :=
+  not_stopped_of_run h
+
+theorem runB_running {C : Cost} {R : Record} {l : List Op} {g : Finset Bit} {b : TState}
+    (h : (runB C R l g b).stopped = false) : b.stopped = false :=
+  runB_not_stopped h
+
+/-- A run keeps the value of every bit that it does not write. -/
+theorem run_vals (C : Cost) (R : Record) (o : Op) (g : Finset Bit) (st : TState) (z : Bit)
+    (hz : z ∉ (Op.fp o).writes) : (run C R o g st).vals z = st.vals z :=
+  (run_ev C R o g st).vals z hz
+
+theorem runB_vals (C : Cost) (R : Record) (l : List Op) (g : Finset Bit) (st : TState) (z : Bit)
+    (hz : z ∉ (Op.fps l).writes) : (runB C R l g st).vals z = st.vals z :=
+  (runB_ev C R l g st).vals z hz
 
 end Qlin

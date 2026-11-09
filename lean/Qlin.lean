@@ -10,4 +10,5 @@ import Qlin.CQ
 import Qlin.CQGates
 import Qlin.CQDefer
 import Qlin.Check
+import Qlin.CheckLatency
 import Qlin.Negative

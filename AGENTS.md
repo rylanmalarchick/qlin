@@ -23,8 +23,9 @@
   `benchmarks/SOURCES.txt` records origins and commits.
 - `tests/`: integration tests. `benchmarks/hand/`: hand-written programs.
 - `lean/`: Lean model and proofs (`Qlin/IR`, `Sem`, `Structure`, `M0`,
-  `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Check`, `Negative`).
-  `Check` holds the translation-validation checkers. `lean/QlinCheck.lean`
+  `FastPath`, `Sink`, `PauliTable`, `Latency`, `CQ`, `CQGates`, `CQDefer`, `Check`, `CheckLatency`, `Negative`).
+  `Check` and `CheckLatency` hold the translation-validation checkers
+  (semantics and latency). `lean/QlinCheck.lean`
   runs them: `lake env lean --run QlinCheck.lean JOBS.json`.
   `CQ` is the density-matrix model of the leaf axioms. `lean/Axioms.lean`
   lists the theorems that `scripts/lean_axioms.sh` checks.

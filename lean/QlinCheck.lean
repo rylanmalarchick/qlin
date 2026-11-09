@@ -73,8 +73,8 @@ def runJob (j : Json) : Except String (String × Bool) := do
   match kind with
   | "m0" =>
     let W := (List.range bits).toFinset
-    if !checkBlock FUEL W src tgt then return (name ++ " (semantics)", false)
-    if !checkLat FUEL W ∅ src tgt then return (name ++ " (latency)", false)
+    if !checkBlock FUEL W src tgt then return (name, false)
+    if !checkLat FUEL W ∅ src tgt then return (name, false)
     return (name, true)
   | "fp" => return (name, checkFP FUEL src tgt)
   | k => throw s!"unknown kind {k}"

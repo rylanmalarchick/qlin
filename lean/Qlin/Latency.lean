@@ -855,4 +855,269 @@ theorem merge_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0)
   exact expectedMakespan_le s w Q _ _ fun i hi =>
     merge_latency C (R i) c x A sA B sB gates hA hB hencA hencB st hst (hrun i hi)
 
+/-! ### Closure: a step in any context, and sequences of steps
+
+`hoist_latency` and `merge_latency` cover one step at the root of an
+`if`. `M0Steps E P Q` closes the two steps under blocks, the arms of an
+`if`, loop bodies, switch cases, and sequences. `E` bounds the enclosing
+gate bits: an arm adds the condition bits, a case adds the switch bits.
+`m0Steps_latency`: if `P` reaches `Q` by such steps, then the replay of
+`Q` is pointwise no later than the replay of `P`, from any start state
+that is no later, under any gate bits inside `E`, on every record on
+which `P` does not stop. -/
+
+theorem TState.Le.refl (a : TState) : a.Le a :=
+  ⟨rfl, rfl, rfl, fun _ => le_rfl, fun _ => optLe_refl _⟩
+
+theorem TState.Le.trans {a b c : TState} (h1 : a.Le b) (h2 : b.Le c) : a.Le c :=
+  ⟨h1.1.trans h2.1, h1.2.1.trans h2.2.1, h1.2.2.1.trans h2.2.2.1,
+    fun q => (h1.2.2.2.1 q).trans (h2.2.2.2.1 q),
+    fun x => optLe_trans (h1.2.2.2.2 x) (h2.2.2.2.2 x)⟩
+
+/-- `Q` is no later than `P` under the gate bits `g`, from any start state
+that is no later, when the run of `P` does not stop. -/
+def NoLaterAt (C : Cost) (R : Record) (g : Finset Bit) (P Q : List Op) : Prop :=
+  ∀ a b : TState, a.Le b → (runB C R P g b).stopped = false →
+    (runB C R Q g a).Le (runB C R P g b)
+
+/-- `NoLaterAt` under every gate set inside `E`. -/
+def NoLater (C : Cost) (R : Record) (E : Finset Bit) (P Q : List Op) : Prop :=
+  ∀ g, g ⊆ E → NoLaterAt C R g P Q
+
+/-- Hoist and merge steps, closed under contexts and sequences. `E` is an
+upper bound of the enclosing gate bits. -/
+inductive M0Steps : Finset Bit → List Op → List Op → Prop
+  | hoist (E : Finset Bit) (c : Cond) (x : Op) (pA A pB B : List Op)
+      (hA : ∀ y ∈ pA, (Op.fp x).Disj (Op.fp y))
+      (hB : ∀ y ∈ pB, (Op.fp x).Disj (Op.fp y))
+      (hc : Disjoint c.bits (Op.fp x).writes)
+      (henc : Disjoint E (Op.fp x).writes) :
+      M0Steps E [.ite c (pA ++ x :: A) (pB ++ x :: B)] [x, .ite c (pA ++ A) (pB ++ B)]
+  | merge (E : Finset Bit) (c : Cond) (x : Op) (A sA B sB : List Op)
+      (hA : ∀ y ∈ sA, (Op.fp x).Disj (Op.fp y))
+      (hB : ∀ y ∈ sB, (Op.fp x).Disj (Op.fp y))
+      (hencA : ∀ y ∈ sA, Disjoint E (Op.fp y).writes)
+      (hencB : ∀ y ∈ sB, Disjoint E (Op.fp y).writes) :
+      M0Steps E [.ite c (A ++ x :: sA) (B ++ x :: sB)] [.ite c (A ++ sA) (B ++ sB), x]
+  | frame {E : Finset Bit} {P Q : List Op} (l1 l2 : List Op) :
+      M0Steps E P Q → M0Steps E (l1 ++ P ++ l2) (l1 ++ Q ++ l2)
+  | iteL {E : Finset Bit} {A A' : List Op} (c : Cond) (B : List Op) :
+      M0Steps (E ∪ c.bits) A A' → M0Steps E [.ite c A B] [.ite c A' B]
+  | iteR {E : Finset Bit} {B B' : List Op} (c : Cond) (A : List Op) :
+      M0Steps (E ∪ c.bits) B B' → M0Steps E [.ite c A B] [.ite c A B']
+  | loop {E : Finset Bit} {body body' : List Op} (K : ℕ) (c : Cond) :
+      M0Steps (E ∪ c.bits) body body' → M0Steps E [.loop K body c] [.loop K body' c]
+  | case {E : Finset Bit} {blk blk' : List Op} (G : Finset Bit)
+      (cs1 : List (Assign × List Op)) (v : Assign) (cs2 : List (Assign × List Op))
+      (d : List Op) :
+      M0Steps (E ∪ G) blk blk' →
+      M0Steps E [.switch G (cs1 ++ (v, blk) :: cs2) d] [.switch G (cs1 ++ (v, blk') :: cs2) d]
+  | dflt {E : Finset Bit} {d d' : List Op} (G : Finset Bit)
+      (cs : List (Assign × List Op)) :
+      M0Steps (E ∪ G) d d' → M0Steps E [.switch G cs d] [.switch G cs d']
+  | refl (E : Finset Bit) (P : List Op) : M0Steps E P P
+  | trans {E : Finset Bit} {P Q S : List Op} :
+      M0Steps E P Q → M0Steps E Q S → M0Steps E P S
+
+private theorem le_stopped {a b : TState} (h : a.Le b) : a.stopped = b.stopped := h.2.2.1
+
+private theorem noLaterAt_refl (C : Cost) (R : Record) (g : Finset Bit) (P : List Op) :
+    NoLaterAt C R g P P :=
+  fun a b hab _ => runB_mono C R P g g (Finset.Subset.refl _) a b hab
+
+private theorem loopT_noLater (c : Cond) (g : Finset Bit)
+    (f f' : Finset Bit → TState → TState)
+    (H : ∀ g', g' ⊆ g ∪ c.bits → ∀ a b : TState, a.Le b → (f g' b).stopped = false →
+      (f' g' a).Le (f g' b)) :
+    ∀ (k : ℕ) (first : Bool) (a b : TState), a.Le b →
+      (loopT f c g k first b).stopped = false →
+      (loopT f' c g k first a).Le (loopT f c g k first b)
+  | 0, _, _, _, _, h => by simp [loopT] at h
+  | k + 1, first, a, b, hab, h => by
+    have hg : (if first = true then g else g ∪ c.bits) ⊆ g ∪ c.bits := by
+      cases first
+      · exact Finset.Subset.refl _
+      · exact Finset.subset_union_left
+    simp only [loopT] at h ⊢
+    by_cases hs : (f (if first = true then g else g ∪ c.bits) b).stopped = true
+    · simp [hs] at h
+    · have hs' : (f (if first = true then g else g ∪ c.bits) b).stopped = false := by
+        simpa using hs
+      have hle := H _ hg a b hab hs'
+      have hsa : (f' (if first = true then g else g ∪ c.bits) a).stopped = false := by
+        rw [le_stopped hle, hs']
+      rw [hs', Bool.false_or] at h
+      rw [hsa, Bool.false_or, hs', Bool.false_or, hle.1]
+      by_cases hc : c.eval (f (if first = true then g else g ∪ c.bits) b).vals = true
+      · rw [if_pos hc, if_pos hc]; exact hle
+      · rw [if_neg hc] at h ⊢
+        rw [if_neg hc]
+        exact loopT_noLater c g f f' H k false _ _ hle h
+
+private theorem runCases_mono (C : Cost) (R : Record) (G : Finset Bit) (d : List Op)
+    (gates : Finset Bit) :
+    ∀ (cs : List (Assign × List Op)) (a b : TState), a.Le b →
+      (runCases C R G cs d gates a).Le (runCases C R G cs d gates b)
+  | [], a, b, hab => by
+    simp only [runCases]
+    exact runB_mono C R d gates gates (Finset.Subset.refl _) a b hab
+  | (v, blk) :: cs, a, b, hab => by
+    simp only [runCases, hab.1]
+    by_cases h : agrees G b.vals v
+    · rw [if_pos h, if_pos h]
+      exact runB_mono C R blk gates gates (Finset.Subset.refl _) a b hab
+    · rw [if_neg h, if_neg h]
+      exact runCases_mono C R G d gates cs a b hab
+
+private theorem runCases_case (C : Cost) (R : Record) (G : Finset Bit) (d : List Op)
+    (gates : Finset Bit) (v : Assign) (blk blk' : List Op) (cs2 : List (Assign × List Op))
+    (H : NoLaterAt C R gates blk blk') :
+    ∀ (cs1 : List (Assign × List Op)) (a b : TState), a.Le b →
+      (runCases C R G (cs1 ++ (v, blk) :: cs2) d gates b).stopped = false →
+      (runCases C R G (cs1 ++ (v, blk') :: cs2) d gates a).Le
+        (runCases C R G (cs1 ++ (v, blk) :: cs2) d gates b)
+  | [], a, b, hab, h => by
+    simp only [List.nil_append, runCases, hab.1] at h ⊢
+    by_cases hv : agrees G b.vals v
+    · rw [if_pos hv] at h ⊢
+      rw [if_pos hv]
+      exact H a b hab h
+    · rw [if_neg hv, if_neg hv]
+      exact runCases_mono C R G d gates cs2 a b hab
+  | (w, blk0) :: cs1, a, b, hab, h => by
+    simp only [List.cons_append, runCases, hab.1] at h ⊢
+    by_cases hv : agrees G b.vals w
+    · rw [if_pos hv, if_pos hv]
+      exact runB_mono C R blk0 gates gates (Finset.Subset.refl _) a b hab
+    · rw [if_neg hv] at h ⊢
+      rw [if_neg hv]
+      exact runCases_case C R G d gates v blk blk' cs2 H cs1 a b hab h
+
+private theorem runCases_dflt (C : Cost) (R : Record) (G : Finset Bit) (d d' : List Op)
+    (gates : Finset Bit) (H : NoLaterAt C R gates d d') :
+    ∀ (cs : List (Assign × List Op)) (a b : TState), a.Le b →
+      (runCases C R G cs d gates b).stopped = false →
+      (runCases C R G cs d' gates a).Le (runCases C R G cs d gates b)
+  | [], a, b, hab, h => by
+    simp only [runCases] at h ⊢
+    exact H a b hab h
+  | (w, blk0) :: cs, a, b, hab, h => by
+    simp only [runCases, hab.1] at h ⊢
+    by_cases hv : agrees G b.vals w
+    · rw [if_pos hv, if_pos hv]
+      exact runB_mono C R blk0 gates gates (Finset.Subset.refl _) a b hab
+    · rw [if_neg hv] at h ⊢
+      rw [if_neg hv]
+      exact runCases_dflt C R G d d' gates H cs a b hab h
+
+private theorem not_stopped_of_run {C : Cost} {R : Record} {o : Op} {g : Finset Bit}
+    {b : TState} (h : (run C R o g b).stopped = false) : b.stopped = false := by
+  cases hs : b.stopped
+  · rfl
+  · rw [run_stopped C R o g b hs, hs] at h
+    exact h
+
+/-- Closure of C1: if `P` reaches `Q` by hoist and merge steps at any
+position, then the replay of `Q` is no later than the replay of `P`. -/
+theorem m0Steps_latency (C : Cost) (R : Record) {E : Finset Bit} {P Q : List Op}
+    (h : M0Steps E P Q) : NoLater C R E P Q := by
+  induction h with
+  | hoist E c x pA A pB B hA hB hc henc =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    have key := hoist_latency C R c x pA A pB B g hA hB hc
+      (Finset.disjoint_of_subset_left hg henc) b (not_stopped_of_run hrun) hrun
+    rw [runB_single]
+    exact (runB_mono C R _ g g (Finset.Subset.refl _) a b hab).trans key
+  | merge E c x A sA B sB hA hB hencA hencB =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    have key := merge_latency C R c x A sA B sB g hA hB
+      (fun y hy => Finset.disjoint_of_subset_left hg (hencA y hy))
+      (fun y hy => Finset.disjoint_of_subset_left hg (hencB y hy)) b
+      (not_stopped_of_run hrun) hrun
+    rw [runB_single]
+    exact (runB_mono C R _ g g (Finset.Subset.refl _) a b hab).trans key
+  | frame l1 l2 _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_append', runB_append'] at hrun
+    rw [runB_append', runB_append', runB_append', runB_append']
+    have h1 := runB_mono C R l1 g g (Finset.Subset.refl _) a b hab
+    exact runB_mono C R l2 g g (Finset.Subset.refl _) _ _
+      (ih g hg _ _ h1 (runB_not_stopped hrun))
+  | @iteL E A A' c B _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    rw [runB_single, runB_single]
+    have hb := not_stopped_of_run hrun
+    have ha : a.stopped = false := by rw [le_stopped hab, hb]
+    have hgc : g ∪ c.bits ⊆ E ∪ c.bits := Finset.union_subset_union hg (Finset.Subset.refl _)
+    simp only [run, hb, ha, hab.1, Bool.false_eq_true, if_false] at hrun ⊢
+    by_cases hce : c.eval b.vals = true
+    · rw [if_pos hce] at hrun ⊢
+      rw [if_pos hce]
+      exact ih _ hgc a b hab hrun
+    · rw [if_neg hce, if_neg hce]
+      exact runB_mono C R B _ _ (Finset.Subset.refl _) a b hab
+  | @iteR E B B' c A _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    rw [runB_single, runB_single]
+    have hb := not_stopped_of_run hrun
+    have ha : a.stopped = false := by rw [le_stopped hab, hb]
+    have hgc : g ∪ c.bits ⊆ E ∪ c.bits := Finset.union_subset_union hg (Finset.Subset.refl _)
+    simp only [run, hb, ha, hab.1, Bool.false_eq_true, if_false] at hrun ⊢
+    by_cases hce : c.eval b.vals = true
+    · rw [if_pos hce, if_pos hce]
+      exact runB_mono C R A _ _ (Finset.Subset.refl _) a b hab
+    · rw [if_neg hce] at hrun ⊢
+      rw [if_neg hce]
+      exact ih _ hgc a b hab hrun
+  | @loop E body body' K c _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    rw [runB_single, runB_single]
+    have hb := not_stopped_of_run hrun
+    have ha : a.stopped = false := by rw [le_stopped hab, hb]
+    simp only [run, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    exact loopT_noLater c g _ _
+      (fun g' hg' a' b' hab' h' =>
+        ih g' (hg'.trans (Finset.union_subset_union hg (Finset.Subset.refl _))) a' b' hab' h')
+      K true a b hab hrun
+  | @case E blk blk' G cs1 v cs2 d _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    rw [runB_single, runB_single]
+    have hb := not_stopped_of_run hrun
+    have ha : a.stopped = false := by rw [le_stopped hab, hb]
+    simp only [run, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    exact runCases_case C R G d _ v blk blk' cs2
+      (ih _ (Finset.union_subset_union hg (Finset.Subset.refl _))) cs1 a b hab hrun
+  | @dflt E d d' G cs _ ih =>
+    intro g hg a b hab hrun
+    rw [runB_single] at hrun
+    rw [runB_single, runB_single]
+    have hb := not_stopped_of_run hrun
+    have ha : a.stopped = false := by rw [le_stopped hab, hb]
+    simp only [run, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    exact runCases_dflt C R G d d' _
+      (ih _ (Finset.union_subset_union hg (Finset.Subset.refl _))) cs a b hab hrun
+  | refl E P => exact fun g _ => noLaterAt_refl C R g P
+  | trans _ _ ih1 ih2 =>
+    intro g hg a b hab hrun
+    have h1 := ih1 g hg b b (TState.Le.refl b) hrun
+    have h2 := ih2 g hg a b hab (by rw [le_stopped h1]; exact hrun)
+    exact h2.trans h1
+
+/-- The closure in expectation: over any weighted set of records on which
+`P` does not stop, `Q` has no larger expected makespan. -/
+theorem m0Steps_expected_latency {ι : Type*} (s : Finset ι) (w : ι → ℝ≥0) (Q' : Finset Qubit)
+    (C : Cost) (R : ι → Record) {E : Finset Bit} {P Q : List Op} (h : M0Steps E P Q)
+    (g : Finset Bit) (hg : g ⊆ E) (st : TState)
+    (hrun : ∀ i ∈ s, (runB C (R i) P g st).stopped = false) :
+    expectedMakespan s w Q' (fun i => runB C (R i) Q g st) ≤
+      expectedMakespan s w Q' (fun i => runB C (R i) P g st) :=
+  expectedMakespan_le s w Q' _ _ fun i hi =>
+    m0Steps_latency C (R i) h g hg st st (TState.Le.refl st) (hrun i hi)
+
 end Qlin

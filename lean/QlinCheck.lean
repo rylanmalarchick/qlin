@@ -9,7 +9,8 @@ Run: `lake env lean --run QlinCheck.lean JOBS.json` (from `lean/`).
 `JOBS.json` comes from `qlin tv-export`. Each job names a source and a
 target program. Kind `m0` runs `checkBlock` (semantics) and `checkLat`
 (latency, with no enclosing gate bits) from the all-zero bits, and passes
-only if both accept. Kind `fp` runs `checkFP`. A `true` answer is covered
+only if both accept. Kind `m0-semantics` runs `checkBlock` alone (for
+the planted jobs of bench/tv_planted.json). Kind `fp` runs `checkFP`. A `true` answer is covered
 by `checkBlock_sound` and `checkLat_sound`, or by `checkFP_sound`. Parsing is outside the proofs: the trusted part is that
 this file reads the JSON into the same programs the Rust code wrote.
 
@@ -76,6 +77,7 @@ def runJob (j : Json) : Except String (String × Bool) := do
     if !checkBlock FUEL W src tgt then return (name, false)
     if !checkLat FUEL W ∅ src tgt then return (name, false)
     return (name, true)
+  | "m0-semantics" => return (name, checkBlock FUEL ((List.range bits).toFinset) src tgt)
   | "fp" => return (name, checkFP FUEL src tgt)
   | k => throw s!"unknown kind {k}"
 

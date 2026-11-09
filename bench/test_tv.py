@@ -2,7 +2,11 @@
 
 bench/tv_planted.json holds five hand-made jobs: a valid hoist, a hoist of
 an op that one arm lacks, a valid fold, a valid dispatch, and a dispatch
-whose case body drops the arm its value selects.
+whose case body drops the arm its value selects. Three more jobs test the
+latency checker: a hoist out of a nested if that writes no enclosing
+condition bit, the same hoist of an op that writes the outer condition bit
+(the shape of notes/c1-counterexample), and that job again under the
+semantics checker alone.
 """
 
 import subprocess
@@ -20,6 +24,12 @@ def test_planted_errors_are_rejected():
     lines = check(ROOT / "bench" / "tv_planted.json")
     assert lines[:5] == ["ok   hoist", "FAIL bad-hoist", "ok   fold", "ok   switch",
                          "FAIL bad-switch"]
+
+
+def test_a_hoist_that_can_add_latency_fails_the_latency_checker_only():
+    lines = check(ROOT / "bench" / "tv_planted.json")
+    assert lines[5:8] == ["ok   nested-hoist", "FAIL bad-latency",
+                          "ok   bad-latency-semantics-only"]
 
 
 def test_own_output_is_accepted():

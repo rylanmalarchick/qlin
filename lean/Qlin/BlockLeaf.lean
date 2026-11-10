@@ -395,4 +395,184 @@ theorem runKCases_put (C : BCost) (R : Record) (f : Footprint) (er em : ℝ≥0)
       exact runKCases_put C R f er em G cs dflt g hG hDcs hd s hg
 end
 
+/-! ### Frame: what a block run leaves alone
+
+`Frm C F g a b`: from `a` to `b`, `ready` is unchanged outside the qubits
+of `F`, `measEnd` is unchanged outside the writes of `F`, and the gate
+time of every set of gate bits inside `g` only grows. -/
+
+structure Frm (C : Cost) (F : Footprint) (g : Finset Bit) (a b : TState) : Prop where
+  ready : ∀ q, q ∉ F.qubits → b.ready q = a.ready q
+  meas : ∀ z, z ∉ F.writes → b.measEnd z = a.measEnd z
+  grow : ∀ g0, g0 ⊆ g → gateTime C a g0 ≤ gateTime C b g0
+
+theorem Frm.refl (C : Cost) (F : Footprint) (g : Finset Bit) (a : TState) : Frm C F g a a :=
+  ⟨fun _ _ => rfl, fun _ _ => rfl, fun _ _ => le_rfl⟩
+
+theorem Frm.trans {C : Cost} {F : Footprint} {g : Finset Bit} {a b c : TState}
+    (h1 : Frm C F g a b) (h2 : Frm C F g b c) : Frm C F g a c :=
+  ⟨fun q hq => (h2.ready q hq).trans (h1.ready q hq),
+    fun z hz => (h2.meas z hz).trans (h1.meas z hz),
+    fun g0 hg0 => (h1.grow g0 hg0).trans (h2.grow g0 hg0)⟩
+
+theorem Frm.mono {C : Cost} {F F' : Footprint} {g g' : Finset Bit} {a b : TState}
+    (h : Frm C F g a b) (hq : F.qubits ⊆ F'.qubits) (hw : F.writes ⊆ F'.writes) (hg : g' ⊆ g) :
+    Frm C F' g' a b :=
+  ⟨fun q hq' => h.ready q fun h' => hq' (hq h'), fun z hz => h.meas z fun h' => hz (hw h'),
+    fun g0 hg0 => h.grow g0 (hg0.trans hg)⟩
+
+/-- The gate time of `g0` when `measEnd` agrees on `g0`. -/
+theorem gateTime_congr (C : Cost) (a b : TState) (g0 : Finset Bit)
+    (h : ∀ z ∈ g0, b.measEnd z = a.measEnd z) : gateTime C b g0 = gateTime C a g0 := by
+  unfold gateTime
+  exact Finset.sup_congr rfl fun z hz => by rw [h z hz]
+
+theorem leafT_frm (C : Cost) (R : Record) (i : ℕ) (f : Footprint) (g : Finset Bit)
+    (st : TState) : Frm C f g st (leafT C R i f g st) := by
+  by_cases hs : st.stopped = true
+  · have : leafT C R i f g st = st := by simp [leafT, hs]
+    rw [this]
+    exact Frm.refl C f g st
+  · have hs0 : st.stopped = false := by simpa using hs
+    rw [leafT_eq_put C R i f g st hs0]
+    refine ⟨fun q hq => by simp [put, hq], fun z hz => by simp [put, hz], fun g0 hg0 => ?_⟩
+    unfold gateTime
+    refine Finset.sup_le fun z hz => ?_
+    refine le_trans ?_ (Finset.le_sup (f := fun z =>
+      match (put R f (max (gateTime C st g) (f.qubits.sup st.ready) + C.dur i f)
+        (max (gateTime C st g) (f.qubits.sup st.ready) + C.dur i f) st).measEnd z with
+      | some t => t + C.tff
+      | none => 0) hz)
+    by_cases hw : z ∈ f.writes
+    · have h1 : (match st.measEnd z with
+          | some t => t + C.tff
+          | none => 0) ≤ gateTime C st g := by
+        unfold gateTime
+        exact Finset.le_sup (f := fun z => match st.measEnd z with
+          | some t => t + C.tff
+          | none => 0) (hg0 hz)
+      simp only [put, hw, if_true]
+      exact h1.trans ((le_max_left _ _).trans (le_self_add.trans le_self_add))
+    · simp only [put, if_neg hw]
+      exact le_rfl
+
+theorem stall_frm (C : BCost) (F : Footprint) (bits g : Finset Bit) (n : ℕ) (g' : Finset Bit)
+    (s : BState) : Frm C.base F g' s.st (stall C F bits g n s).st :=
+  ⟨fun q hq => by simp [stall, hq], fun _ _ => rfl,
+    fun g0 _ => le_of_eq (gateTime_congr C.base _ _ g0 fun _ _ => rfl).symm⟩
+
+theorem loopK_frm (C : Cost) (F : Footprint) (c : Cond) (g : Finset Bit)
+    (body : Finset Bit → BState → BState) (stl : BState → BState)
+    (hbody : ∀ g' s, g ⊆ g' → Frm C F g s.st (body g' s).st)
+    (hstl : ∀ s, Frm C F g s.st (stl s).st) :
+    ∀ (k : ℕ) (first : Bool) (s : BState), Frm C F g s.st (loopK body stl c g k first s).st
+  | 0, _, s => by
+    simp only [loopK]
+    exact ⟨fun _ _ => rfl, fun _ _ => rfl,
+      fun g0 _ => le_of_eq (gateTime_congr C _ _ g0 fun _ _ => rfl).symm⟩
+  | k + 1, first, s => by
+    have hg' : g ⊆ (if first = true then g else g ∪ c.bits) := by
+      cases first
+      · exact Finset.subset_union_left
+      · exact Finset.Subset.refl _
+    have h1 := hbody _ s hg'
+    simp only [loopK]
+    generalize body (if first = true then g else g ∪ c.bits) s = x at h1 ⊢
+    have h2 : Frm C F g s.st (if x.st.stopped = true then x else stl x).st := by
+      split_ifs
+      · exact h1
+      · exact h1.trans (hstl x)
+    generalize (if x.st.stopped = true then x else stl x) = y at h2 ⊢
+    split_ifs
+    · exact h2
+    · exact h2.trans (loopK_frm C F c g body stl hbody hstl k false y)
+
+theorem fps_sub_ite_left (c : Cond) (A B : List Op) :
+    (Op.fps A).qubits ⊆ (Op.fp (.ite c A B)).qubits ∧
+      (Op.fps A).writes ⊆ (Op.fp (.ite c A B)).writes := by
+  simp only [Op.fp, Footprint.union_qubits, Footprint.union_writes]
+  exact ⟨Finset.subset_union_right.trans Finset.subset_union_left,
+    Finset.subset_union_right.trans Finset.subset_union_left⟩
+
+theorem fps_sub_ite_right (c : Cond) (A B : List Op) :
+    (Op.fps B).qubits ⊆ (Op.fp (.ite c A B)).qubits ∧
+      (Op.fps B).writes ⊆ (Op.fp (.ite c A B)).writes := by
+  simp only [Op.fp, Footprint.union_qubits, Footprint.union_writes]
+  exact ⟨Finset.subset_union_right, Finset.subset_union_right⟩
+
+mutual
+/-- A block-model run of `o` under `g` changes only the footprint of `o`,
+and the gate times inside `g` only grow. -/
+theorem runK_frm (C : BCost) (R : Record) : ∀ (o : Op) (g : Finset Bit) (s : BState),
+    Frm C.base (Op.fp o) g s.st (runK C R o g s).st
+  | .leaf i f, g, s => by
+    simp only [runK, Op.fp]
+    exact leafT_frm C.base R i f g s.st
+  | .ite c A B, g, s => by
+    have hst := stall_frm C (Op.fp (.ite c A B)) c.bits g 1 g s
+    simp only [runK]
+    split_ifs
+    · exact Frm.refl _ _ _ _
+    · exact hst.trans ((runKB_frm C R A _ _).mono (fps_sub_ite_left c A B).1
+        (fps_sub_ite_left c A B).2 Finset.subset_union_left)
+    · exact hst.trans ((runKB_frm C R B _ _).mono (fps_sub_ite_right c A B).1
+        (fps_sub_ite_right c A B).2 Finset.subset_union_left)
+  | .loop K body c, g, s => by
+    have hq : (Op.fps body).qubits ⊆ (Op.fp (.loop K body c)).qubits := by
+      simp only [Op.fp, Footprint.union_qubits]; exact Finset.subset_union_right
+    have hw : (Op.fps body).writes ⊆ (Op.fp (.loop K body c)).writes := by
+      simp only [Op.fp, Footprint.union_writes]; exact Finset.subset_union_right
+    simp only [runK]
+    split_ifs
+    · exact Frm.refl _ _ _ _
+    · exact loopK_frm C.base _ c g _ _
+        (fun g' s' hg' => (runKB_frm C R body g' s').mono hq hw hg')
+        (fun s' => stall_frm C _ c.bits g 1 g s') K true s
+  | .switch G cs dflt, g, s => by
+    have hqd : (Op.fps dflt).qubits ⊆ (Op.fp (.switch G cs dflt)).qubits := by
+      simp only [Op.fp, Footprint.union_qubits]; exact Finset.subset_union_right
+    have hwd : (Op.fps dflt).writes ⊆ (Op.fp (.switch G cs dflt)).writes := by
+      simp only [Op.fp, Footprint.union_writes]; exact Finset.subset_union_right
+    have hqc : (Op.fpsCases cs).qubits ⊆ (Op.fp (.switch G cs dflt)).qubits := by
+      simp only [Op.fp, Footprint.union_qubits]
+      exact Finset.subset_union_right.trans Finset.subset_union_left
+    have hwc : (Op.fpsCases cs).writes ⊆ (Op.fp (.switch G cs dflt)).writes := by
+      simp only [Op.fp, Footprint.union_writes]
+      exact Finset.subset_union_right.trans Finset.subset_union_left
+    simp only [runK]
+    split_ifs
+    · exact Frm.refl _ _ _ _
+    · refine (stall_frm C _ G g (C.dec G.card cs.length (armIdx G s.st.vals cs)) g s).trans ?_
+      exact (runKCases_frm C R G cs dflt (g ∪ G) (Op.fp (.switch G cs dflt)) hqc hwc
+        (fun s' => (runKB_frm C R dflt _ s').mono hqd hwd (Finset.Subset.refl _)) _).mono
+        (Finset.Subset.refl _) (Finset.Subset.refl _) Finset.subset_union_left
+
+theorem runKB_frm (C : BCost) (R : Record) : ∀ (l : List Op) (g : Finset Bit) (s : BState),
+    Frm C.base (Op.fps l) g s.st (runKB C R l g s).st
+  | [], g, s => by simp only [runKB]; exact Frm.refl _ _ _ _
+  | o :: os, g, s => by
+    simp only [runKB, Op.fps]
+    exact ((runK_frm C R o g s).mono (by simp [Footprint.union_qubits])
+      (by simp [Footprint.union_writes]) (Finset.Subset.refl _)).trans
+      ((runKB_frm C R os g _).mono (by simp [Footprint.union_qubits])
+        (by simp [Footprint.union_writes]) (Finset.Subset.refl _))
+
+theorem runKCases_frm (C : BCost) (R : Record) (G : Finset Bit) :
+    ∀ (cs : List (Assign × List Op)) (dflt : List Op) (g : Finset Bit) (F : Footprint),
+    (Op.fpsCases cs).qubits ⊆ F.qubits → (Op.fpsCases cs).writes ⊆ F.writes →
+    (∀ s, Frm C.base F g s.st (runKB C R dflt g s).st) →
+    ∀ s : BState, Frm C.base F g s.st (runKCases C R G cs dflt g s).st
+  | [], dflt, g, F, _, _, hd, s => by
+    simp only [runKCases]
+    exact hd s
+  | (v, blk) :: cs, dflt, g, F, hq, hw, hd, s => by
+    simp only [Op.fpsCases, Footprint.union_qubits, Footprint.union_writes] at hq hw
+    simp only [runKCases]
+    split_ifs
+    · exact (runKB_frm C R blk g s).mono (Finset.subset_union_left.trans hq)
+        (Finset.subset_union_left.trans hw) (Finset.Subset.refl _)
+    · exact runKCases_frm C R G cs dflt g F (Finset.subset_union_right.trans hq)
+        (Finset.subset_union_right.trans hw) hd s
+end
+
 end Qlin

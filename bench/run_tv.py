@@ -49,6 +49,9 @@ def main() -> int:
                          cwd=ROOT / "lean", capture_output=True, text=True, check=False)
     lines = run.stdout.strip().splitlines()
     fails = [ln for ln in lines if not ln.startswith("ok")][:-1]
+    leaf = subprocess.run(["lake", "env", "lean", "--run", "QlinCheck.lean", "--leaf-moves",
+                           str(JOBS)], cwd=ROOT / "lean", capture_output=True, text=True,
+                          check=False).stdout.strip().splitlines()
     out = [
         "# Phase 7.3 results: translation validation in Lean",
         "",
@@ -63,8 +66,11 @@ def main() -> int:
         f"- {lines[-1]}",
         f"- M0 jobs (semantics and latency): {sum(j['kind'] == 'm0' for j in jobs)}",
         f"- Jobs not passing: {len(fails)}",
+        f"- {leaf[-1]} (checkLatLeaf; a moved branch can add latency in the",
+        "  block model, notes/block-counterexample)",
         "",
     ]
+    out += [f"  - {ln}" for ln in leaf[:-1]]
     out += [f"  - {f}" for f in fails]
     out += ["", "## Skipped", ""] + [f"- {s}" for s in skipped]
     (RESULTS / "phase7_tv.md").write_text("\n".join(out) + "\n")

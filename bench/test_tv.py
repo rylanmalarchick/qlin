@@ -36,3 +36,17 @@ def test_own_output_is_accepted():
     jobs = ROOT / "target" / "tv_test_jobs.json"
     jobs.write_text(qlin("tv-export", "--t", "2", "benchmarks/hand/repetition3.qlin"))
     assert check(jobs)[-1] == "4 of 4 jobs checked"
+
+
+def test_the_leaf_moves_report_flags_a_hoisted_branch():
+    jobs = ROOT / "target" / "tv_block_jobs.json"
+    jobs.write_text(qlin("tv-export", "--t", "0",
+                         "notes/block-counterexample/hoist_branch.qlin"))
+    run = subprocess.run(["lake", "env", "lean", "--run", "QlinCheck.lean", "--leaf-moves",
+                          str(jobs)], cwd=ROOT / "lean", capture_output=True, text=True,
+                         check=False)
+    lines = run.stdout.strip().splitlines()
+    assert lines[-1] == "0 of 1 M0 jobs move leaves only"
+    assert lines[0].startswith("branch move: ")
+    # The ideal-model checkers accept the same job.
+    assert check(jobs)[0].startswith("ok ")

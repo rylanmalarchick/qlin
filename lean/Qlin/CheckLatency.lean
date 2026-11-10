@@ -425,4 +425,82 @@ theorem checkLat_sound : ∀ (f : ℕ) (W E : Finset Bit) (src tgt : List SOp),
                   (fun g' hg' => ih _ _ _ _ hR C R g' hg') g hg
           · simp at hm
 
+/-! ## Leaf moves only
+
+In the block model a hoisted or merged branch can add latency
+(`hoist_block_can_delay` in Block.lean). `checkLatLeaf` is `checkLat` with
+one more condition: every hoisted or merged op is a leaf. It has no
+soundness theorem for the block model yet. A `true` answer says that the
+M0 derivation of this output moves leaves only. -/
+
+def isLeaf : SOp → Bool
+  | .leaf _ => true
+  | _ => false
+
+/-- `hoistAllT` for leaves only. -/
+def hoistAllL (E : Finset Bit) (c : SExpr) :
+    List SOp → List SOp → List SOp → Option (List SOp × List SOp)
+  | [], A, B => some (A, B)
+  | h :: H, A, B =>
+    if isLeaf h ∧ Disjoint c.bits (writesO h) ∧ Disjoint E (writesO h) then
+      match takeOut h A, takeOut h B with
+      | some (pA, A1), some (pB, B1) => hoistAllL E c H (pA ++ A1) (pB ++ B1)
+      | _, _ => none
+    else none
+
+/-- `mergeRevT` for leaves only. -/
+def mergeRevL (E : Finset Bit) (c : SExpr) :
+    List SOp → List SOp → List SOp → Option (List SOp × List SOp)
+  | [], A, B => some (A, B)
+  | m :: R, A, B =>
+    match takeOutLast m A, takeOutLast m B with
+    | some (A1, sA), some (B1, sB) =>
+      if isLeaf m ∧ (∀ y ∈ sA, Disjoint E (writesO y)) ∧ (∀ y ∈ sB, Disjoint E (writesO y)) then
+        mergeRevL E c R (A1 ++ sA) (B1 ++ sB)
+      else none
+    | _, _ => none
+
+/-- `checkLat` with leaf moves only. -/
+def checkLatLeaf : ℕ → Finset Bit → Finset Bit → List SOp → List SOp → Bool
+  | 0, _, _, _, _ => false
+  | _ + 1, _, _, [], tgt => tgt.isEmpty
+  | f + 1, W, E, o :: rest, tgt =>
+    match o with
+    | .ite c A B =>
+      (foldsTo W c true && checkLatLeaf f W E (A ++ rest) tgt) ||
+      (foldsTo W c false && checkLatLeaf f W E (B ++ rest) tgt) ||
+      (List.range tgt.length).any fun j =>
+        match tgt[j]? with
+        | some (.ite c' A' B') =>
+          decide (c = c') &&
+          match hoistAllL E c (tgt.take j) A B with
+          | none => false
+          | some (A1, B1) =>
+            (List.range (tgt.length - j)).any fun m =>
+              match mergeRevL E c ((tgt.drop (j + 1)).take m).reverse A1 B1 with
+              | none => false
+              | some (A2, B2) =>
+                checkLatLeaf f (W \ writesL (tgt.take j)) (E ∪ c.bits) A2 A' &&
+                checkLatLeaf f (W \ writesL (tgt.take j)) (E ∪ c.bits) B2 B' &&
+                checkLatLeaf f (W \ writesO (.ite c A B)) E rest ((tgt.drop (j + 1)).drop m)
+        | _ => false
+    | .leaf l =>
+      match tgt with
+      | .leaf l' :: tgt' => decide (l = l') && checkLatLeaf f (W \ writesO (.leaf l)) E rest tgt'
+      | _ => false
+    | .loop K body c =>
+      match tgt with
+      | .loop K' body' c' :: tgt' =>
+        decide (K = K') && decide (c = c') && checkLatLeaf f ∅ (E ∪ c.bits) body body' &&
+          checkLatLeaf f (W \ writesO (.loop K body c)) E rest tgt'
+      | _ => false
+    | .switch G cs d =>
+      match tgt with
+      | .switch G' cs' d' :: tgt' =>
+        decide (G = G') && decide (cs.map Prod.fst = cs'.map Prod.fst) &&
+          ((cs.zip cs').all fun p => checkLatLeaf f ∅ (E ∪ G.toFinset) p.1.2 p.2.2) &&
+          checkLatLeaf f ∅ (E ∪ G.toFinset) d d' &&
+          checkLatLeaf f (W \ writesO (.switch G cs d)) E rest tgt'
+      | _ => false
+
 end Qlin.TV

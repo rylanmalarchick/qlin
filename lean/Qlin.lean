@@ -7,6 +7,7 @@ import Qlin.Sink
 import Qlin.PauliTable
 import Qlin.Latency
 import Qlin.Block
+import Qlin.BlockLeaf
 import Qlin.CQ
 import Qlin.CQGates
 import Qlin.CQDefer

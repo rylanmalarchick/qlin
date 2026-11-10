@@ -220,6 +220,25 @@ def full_switch() -> dict:
             "rep_four": gain_t(4), "rep_four_cases": sum(math.comb(m, k) for k in range(5))}
 
 
+def noise() -> dict:
+    """Noise sensitivity (results/phase8_noise.csv)."""
+    rows = list(csv.DictReader(open(RESULTS / "phase8_noise.csv")))
+    ps = sorted({float(r["p"]) for r in rows})
+
+    def ten(cls):
+        return [sum(float(r["gain"]) >= 0.10 for r in rows
+                    if r["class"] == cls and float(r["p"]) == p) for p in ps]
+    rep11 = {float(r["p"]): r for r in rows
+             if (r["benchmark"], r["class"]) == ("qec/repetition11_0_noisy", "qick")}
+    best = [100 * float(r["gain"]) for r in rep11.values()]
+    return {"p_lo": ps[0], "p_hi": ps[-1], "values": len(ps),
+            "none_ten_lo": min(ten("none")), "none_ten_hi": max(ten("none")),
+            "qick_ten_lo": min(ten("qick")), "qick_ten_hi": max(ten("qick")),
+            "rep_best_lo": min(best), "rep_best_hi": max(best),
+            "rep_two_lo_p": 100 * float(rep11[ps[0]]["gain_t2"]),
+            "rep_two_hi_p": 100 * float(rep11[ps[-1]]["gain_t2"])}
+
+
 def qubic() -> dict:
     """QubiC RTL dispatch cycles (results/qubic_dispatch.json)."""
     d = json.loads((RESULTS / "qubic_dispatch.json").read_text())
@@ -296,7 +315,10 @@ def main(out: Path) -> None:
                                           "five_source": ".1f", "five_tree": ".1f"})
              + macros("nFull", full_switch(), {k: ".1f" for k in (
                  "tabtree_max", "steane_margin", "surface_margin_lo", "surface_margin_hi",
-                 "rep_full", "rep_two", "rep_four")}))
+                 "rep_full", "rep_two", "rep_four")})
+             + macros("nNoise", noise(), {"p_lo": "g", "p_hi": "g", "rep_best_lo": ".1f",
+                                          "rep_best_hi": ".1f", "rep_two_lo_p": ".1f",
+                                          "rep_two_hi_p": ".1f"}))
     (out / "numbers.tex").write_text("\n".join(lines) + "\n")
     print(f"wrote {out}/tables/*.tex and numbers.tex ({len(lines) - 1} macros)")
 

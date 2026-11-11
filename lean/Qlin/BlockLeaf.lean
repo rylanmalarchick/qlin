@@ -575,4 +575,312 @@ theorem runKCases_frm (C : BCost) (R : Record) (G : Finset Bit) :
         (Finset.subset_union_right.trans hw) hd s
 end
 
+/-! ### C1 in the block model, for a hoisted or merged leaf -/
+
+theorem optLe_refl' (x : Option ℝ≥0) : OptLe x x := by cases x <;> simp [OptLe]
+
+/-- The end time of a leaf (`leafT`). -/
+def leafEnd (C : Cost) (i : ℕ) (f : Footprint) (g : Finset Bit) (st : TState) : ℝ≥0 :=
+  max (gateTime C st g) (f.qubits.sup st.ready) + C.dur i f
+
+theorem runKB_nil (C : BCost) (R : Record) (g : Finset Bit) (s : BState) :
+    runKB C R [] g s = s := by simp only [runKB]
+
+theorem runKB_cons (C : BCost) (R : Record) (o : Op) (os : List Op) (g : Finset Bit)
+    (s : BState) : runKB C R (o :: os) g s = runKB C R os g (runK C R o g s) := by
+  simp only [runKB]
+
+theorem runKB_appendK (C : BCost) (R : Record) (l1 l2 : List Op) (g : Finset Bit)
+    (s : BState) : runKB C R (l1 ++ l2) g s = runKB C R l2 g (runKB C R l1 g s) := by
+  induction l1 generalizing s with
+  | nil => simp only [List.nil_append, runKB]
+  | cons o os ih => simp only [List.cons_append, runKB, ih]
+
+theorem runK_stoppedK (C : BCost) (R : Record) (o : Op) (g : Finset Bit) (s : BState)
+    (h : s.st.stopped = true) : runK C R o g s = s := by
+  cases o <;> simp [runK, leafT, h]
+
+theorem runKB_stoppedK (C : BCost) (R : Record) (l : List Op) (g : Finset Bit) (s : BState)
+    (h : s.st.stopped = true) : runKB C R l g s = s := by
+  induction l with
+  | nil => simp only [runKB]
+  | cons o os ih => simp only [runKB, runK_stoppedK C R o g s h, ih]
+
+theorem runK_leaf_put (C : BCost) (R : Record) (i : ℕ) (f : Footprint) (g : Finset Bit)
+    (s : BState) (hs : s.st.stopped = false) :
+    runK C R (.leaf i f) g s =
+      putB R f (leafEnd C.base i f g s.st) (leafEnd C.base i f g s.st) s := by
+  simp only [runK, putB, leafEnd]
+  rw [← leafT_eq_put C.base R i f g s.st hs]
+
+theorem runK_ite (C : BCost) (R : Record) (c : Cond) (A B : List Op) (g : Finset Bit)
+    (s : BState) (hs : s.st.stopped = false) :
+    runK C R (.ite c A B) g s =
+      if c.eval s.st.vals then
+        runKB C R A (g ∪ c.bits) (stall C (Op.fp (.ite c A B)) c.bits g 1 s)
+      else runKB C R B (g ∪ c.bits) (stall C (Op.fp (.ite c A B)) c.bits g 1 s) := by
+  simp only [runK, hs, Bool.false_eq_true, if_false]
+
+theorem evalB_put (R : Record) (f : Footprint) (er em : ℝ≥0) (s : BState) (c : Cond)
+    (hc : Disjoint c.bits f.writes) : c.eval (putB R f er em s).st.vals = c.eval s.st.vals :=
+  eval_put R f er em s.st c hc
+
+theorem disj_fps (f : Footprint) :
+    ∀ (p : List Op), (∀ y ∈ p, f.Disj (Op.fp y)) → f.Disj (Op.fps p)
+  | [], _ => by simp [Op.fps, Footprint.Disj, Footprint.empty]
+  | o :: os, h => by
+    simp only [Op.fps]
+    exact Footprint.disj_union_right.2
+      ⟨h o (by simp), disj_fps f os fun y hy => h y (by simp [hy])⟩
+
+theorem disj_fps_writes (g : Finset Bit) :
+    ∀ (l : List Op), (∀ y ∈ l, Disjoint g (Op.fp y).writes) → Disjoint g (Op.fps l).writes
+  | [], _ => by simp [Op.fps, Footprint.empty]
+  | o :: os, h => by
+    simp only [Op.fps, Footprint.union_writes, Finset.disjoint_union_right]
+    exact ⟨h o (by simp), disj_fps_writes g os fun y hy => h y (by simp [hy])⟩
+
+theorem fps_append_qubits : ∀ (l1 l2 : List Op),
+    (Op.fps (l1 ++ l2)).qubits = (Op.fps l1).qubits ∪ (Op.fps l2).qubits
+  | [], l2 => by simp [Op.fps, Footprint.empty]
+  | o :: os, l2 => by
+    simp only [List.cons_append, Op.fps, Footprint.union_qubits, fps_append_qubits os l2,
+      Finset.union_assoc]
+
+/-- Two updates of the same leaf: the later one on a later state is later. -/
+theorem putB_le (R : Record) (f : Footprint) {er er' em em' : ℝ≥0} {a b : BState}
+    (hab : a.Le b) (her : ∀ q ∈ f.qubits, er ≤ er') (hem : em ≤ em') :
+    (putB R f er em a).Le (putB R f er' em' b) := by
+  obtain ⟨⟨hv, hc, hs, hr, hm⟩, hf⟩ := hab
+  refine ⟨⟨?_, ?_, hs, fun q => ?_, fun z => ?_⟩, hf⟩
+  · show (fun z => if z ∈ f.writes then R z (a.st.cursor z) else a.st.vals z) =
+      (fun z => if z ∈ f.writes then R z (b.st.cursor z) else b.st.vals z)
+    rw [hv, hc]
+  · show (fun z => if z ∈ f.writes then a.st.cursor z + 1 else a.st.cursor z) =
+      (fun z => if z ∈ f.writes then b.st.cursor z + 1 else b.st.cursor z)
+    rw [hc]
+  · show (if q ∈ f.qubits then er else a.st.ready q) ≤ (if q ∈ f.qubits then er' else b.st.ready q)
+    by_cases h : q ∈ f.qubits
+    · rw [if_pos h, if_pos h]; exact her q h
+    · rw [if_neg h, if_neg h]; exact hr q
+  · show OptLe (if z ∈ f.writes then some em else a.st.measEnd z)
+      (if z ∈ f.writes then some em' else b.st.measEnd z)
+    by_cases h : z ∈ f.writes
+    · rw [if_pos h, if_pos h]; exact hem
+    · rw [if_neg h, if_neg h]; exact hm z
+
+/-- A controller step with a smaller footprint is no later. -/
+theorem stall_sub_le (C : BCost) (Ft Fs : Footprint) (bits g : Finset Bit) (n : ℕ) (s : BState)
+    (hF : Ft.qubits ⊆ Fs.qubits) : (stall C Ft bits g n s).Le (stall C Fs bits g n s) := by
+  refine ⟨⟨rfl, rfl, rfl, fun q => ?_, fun z => optLe_refl' _⟩, le_rfl⟩
+  show (if q ∈ Ft.qubits then max (s.st.ready q) (stall C Fs bits g n s).free else s.st.ready q) ≤
+    (if q ∈ Fs.qubits then max (s.st.ready q) (stall C Fs bits g n s).free else s.st.ready q)
+  by_cases h2 : q ∈ Ft.qubits
+  · simp only [if_pos h2, if_pos (hF h2), le_refl]
+  · simp only [if_neg h2]
+    split_ifs <;> simp
+
+/-- The controller step of the target `if` after the hoisted leaf, against
+the leaf's update after the controller step of the source `if`. -/
+theorem stall_putB_le (C : BCost) (R : Record) (Ft Fs : Footprint) (bits g : Finset Bit) (n : ℕ)
+    (f : Footprint) (er em : ℝ≥0) (s : BState) (hF : Ft.qubits ⊆ Fs.qubits)
+    (hb : Disjoint bits f.writes) (hg : Disjoint g f.writes) :
+    (stall C Ft bits g n (putB R f er em s)).Le
+      (putB R f (max er (stall C Fs bits g n s).free) em (stall C Fs bits g n s)) := by
+  have ht : (stall C Ft bits g n (putB R f er em s)).free = (stall C Fs bits g n s).free := by
+    show max (max (gateTime C.base (put R f er em s.st) bits)
+        (gateTime C.base (put R f er em s.st) g)) s.free + C.tb * n =
+      max (max (gateTime C.base s.st bits) (gateTime C.base s.st g)) s.free + C.tb * n
+    rw [gateTime_put C.base R f er em s.st bits hb, gateTime_put C.base R f er em s.st g hg]
+  refine ⟨⟨rfl, rfl, rfl, fun q => ?_, fun z => optLe_refl' _⟩, le_of_eq ht⟩
+  have hl : (stall C Ft bits g n (putB R f er em s)).st.ready q =
+      if q ∈ Ft.qubits then
+        max (if q ∈ f.qubits then er else s.st.ready q) (stall C Fs bits g n s).free
+      else (if q ∈ f.qubits then er else s.st.ready q) := by
+    rw [← ht]; rfl
+  have hr : (putB R f (max er (stall C Fs bits g n s).free) em (stall C Fs bits g n s)).st.ready q =
+      if q ∈ f.qubits then max er (stall C Fs bits g n s).free
+      else (if q ∈ Fs.qubits then max (s.st.ready q) (stall C Fs bits g n s).free
+        else s.st.ready q) := rfl
+  rw [hl, hr]
+  generalize (stall C Fs bits g n s).free = t
+  by_cases h1 : q ∈ f.qubits
+  · simp only [if_pos h1]
+    split_ifs <;> simp
+  · simp only [if_neg h1]
+    by_cases h2 : q ∈ Ft.qubits
+    · simp only [if_pos h2, if_pos (hF h2), le_refl]
+    · simp only [if_neg h2]
+      split_ifs <;> simp
+
+/-- One arm of a hoist. -/
+theorem hoist_branch_K (C : BCost) (R : Record) (c : Cond) (i : ℕ) (f : Footprint)
+    (p Z : List Op) (Ft Fs : Footprint) (g : Finset Bit) (s : BState)
+    (hF : Ft.qubits ⊆ Fs.qubits) (hfF : f.qubits ⊆ Fs.qubits)
+    (hp : ∀ y ∈ p, f.Disj (Op.fp y)) (hc : Disjoint c.bits f.writes)
+    (henc : Disjoint g f.writes)
+    (hrun : (runKB C R (p ++ .leaf i f :: Z) (g ∪ c.bits)
+      (stall C Fs c.bits g 1 s)).st.stopped = false) :
+    (runKB C R (p ++ Z) (g ∪ c.bits)
+      (stall C Ft c.bits g 1 (putB R f (leafEnd C.base i f g s.st) (leafEnd C.base i f g s.st) s))).Le
+      (runKB C R (p ++ .leaf i f :: Z) (g ∪ c.bits) (stall C Fs c.bits g 1 s)) := by
+  have hw : Disjoint (g ∪ c.bits) f.writes := Finset.disjoint_union_left.2 ⟨henc, hc⟩
+  have hpD := disj_fps f p hp
+  rw [runKB_appendK] at hrun ⊢
+  rw [runKB_appendK, runKB_cons] at *
+  have hS1 : (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.stopped = false := by
+    cases h' : (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.stopped
+    · rfl
+    · rw [runK_stoppedK C R _ _ _ h', runKB_stoppedK C R Z _ _ h', h'] at hrun
+      exact hrun
+  rw [runK_leaf_put C R i f _ _ hS1]
+  have hfr : ∀ q ∈ f.qubits, (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.ready q =
+      max (s.st.ready q) (stall C Fs c.bits g 1 s).free := by
+    intro q hq
+    rw [(runKB_frm C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).ready q
+      (Finset.disjoint_left.1 hpD.1 hq)]
+    show (if q ∈ Fs.qubits then max (s.st.ready q) (stall C Fs c.bits g 1 s).free
+      else s.st.ready q) = _
+    rw [if_pos (hfF hq)]
+  have hgt : gateTime C.base s.st g ≤
+      gateTime C.base (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st (g ∪ c.bits) := by
+    have hA : gateTime C.base s.st g = gateTime C.base (stall C Fs c.bits g 1 s).st g := rfl
+    rw [hA]
+    exact ((runKB_frm C R p (g ∪ c.bits) _).grow g Finset.subset_union_left).trans
+      (gateTime_mono C.base (TState.Le.refl _) Finset.subset_union_left)
+  have hsup : f.qubits.sup s.st.ready ≤
+      f.qubits.sup (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.ready :=
+    Finset.sup_mono_fun fun q hq => by rw [hfr q hq]; exact le_max_left _ _
+  have he : leafEnd C.base i f g s.st ≤
+      leafEnd C.base i f (g ∪ c.bits) (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st := by
+    unfold leafEnd
+    exact add_le_add (max_le_max hgt hsup) le_rfl
+  have ht : ∀ q ∈ f.qubits, (stall C Fs c.bits g 1 s).free ≤
+      leafEnd C.base i f (g ∪ c.bits) (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st := by
+    intro q hq
+    unfold leafEnd
+    refine le_trans ?_ le_self_add
+    refine le_trans ?_ (le_max_right _ _)
+    refine le_trans ?_ (Finset.le_sup (f := (runKB C R p (g ∪ c.bits)
+      (stall C Fs c.bits g 1 s)).st.ready) hq)
+    rw [hfr q hq]
+    exact le_max_right _ _
+  have h1 := stall_putB_le C R Ft Fs c.bits g 1 f (leafEnd C.base i f g s.st)
+    (leafEnd C.base i f g s.st) s hF hc henc
+  have h2 := runKB_mono C R p (g ∪ c.bits) (g ∪ c.bits) (Finset.Subset.refl _) _ _ h1
+  rw [runKB_put C R f _ _ p (g ∪ c.bits) _ hpD hw] at h2
+  have h3 := putB_le R f (BState.Le.refl (runKB C R p (g ∪ c.bits) (stall C Fs c.bits g 1 s)))
+    (fun q hq => max_le he (ht q hq)) he
+  exact runKB_mono C R Z _ _ (Finset.Subset.refl _) _ _ (h2.trans h3)
+
+/-- C1 in the block model for a hoisted leaf: the side conditions of
+`hoist_latency`. -/
+theorem hoist_block_leaf (C : BCost) (R : Record) (c : Cond) (i : ℕ) (f : Footprint)
+    (pA A pB B : List Op) (gates : Finset Bit)
+    (hA : ∀ y ∈ pA, f.Disj (Op.fp y))
+    (hB : ∀ y ∈ pB, f.Disj (Op.fp y))
+    (hc : Disjoint c.bits f.writes)
+    (henc : Disjoint gates f.writes)
+    (s : BState) (hst : s.st.stopped = false)
+    (hrun : (runK C R (.ite c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B)) gates s).st.stopped
+      = false) :
+    (runKB C R [.leaf i f, .ite c (pA ++ A) (pB ++ B)] gates s).Le
+      (runK C R (.ite c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B)) gates s) := by
+  have hFt : (Op.fp (.ite c (pA ++ A) (pB ++ B))).qubits ⊆
+      (Op.fp (.ite c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B))).qubits := by
+    intro q hq
+    simp only [Op.fp, Op.fps, Footprint.union_qubits, fps_append_qubits, Finset.mem_union] at hq ⊢
+    tauto
+  have hfF : f.qubits ⊆ (Op.fp (.ite c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B))).qubits := by
+    intro q hq
+    simp only [Op.fp, Op.fps, Footprint.union_qubits, fps_append_qubits, Finset.mem_union]
+    tauto
+  rw [runKB_cons, runKB_cons, runKB_nil, runK_leaf_put C R i f gates s hst,
+    runK_ite C R c (pA ++ A) (pB ++ B) gates
+      (putB R f (leafEnd C.base i f gates s.st) (leafEnd C.base i f gates s.st) s) hst,
+    evalB_put R f _ _ s c hc,
+    runK_ite C R c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B) gates s hst]
+  rw [runK_ite C R c _ _ gates s hst] at hrun
+  by_cases hce : c.eval s.st.vals = true
+  · simp only [if_pos hce] at hrun ⊢
+    exact hoist_branch_K C R c i f pA A _ _ gates s hFt hfF hA hc henc hrun
+  · simp only [if_neg hce] at hrun ⊢
+    exact hoist_branch_K C R c i f pB B _ _ gates s hFt hfF hB hc henc hrun
+
+/-- One arm of a merge. -/
+theorem merge_branch_K (C : BCost) (R : Record) (c : Cond) (i : ℕ) (f : Footprint)
+    (P Q : List Op) (Ft Fs : Footprint) (g : Finset Bit) (s : BState)
+    (hF : Ft.qubits ⊆ Fs.qubits)
+    (hq : ∀ y ∈ Q, f.Disj (Op.fp y)) (hencQ : ∀ y ∈ Q, Disjoint g (Op.fp y).writes)
+    (hw : Disjoint (g ∪ c.bits) f.writes)
+    (hrun : (runKB C R (P ++ .leaf i f :: Q) (g ∪ c.bits)
+      (stall C Fs c.bits g 1 s)).st.stopped = false) :
+    (runK C R (.leaf i f) g (runKB C R (P ++ Q) (g ∪ c.bits) (stall C Ft c.bits g 1 s))).Le
+      (runKB C R (P ++ .leaf i f :: Q) (g ∪ c.bits) (stall C Fs c.bits g 1 s)) := by
+  have hQD := disj_fps f Q hq
+  have hgQ := disj_fps_writes g Q hencQ
+  have hX := runKB_mono C R P (g ∪ c.bits) (g ∪ c.bits) (Finset.Subset.refl _) _ _
+    (stall_sub_le C Ft Fs c.bits g 1 s hF)
+  rw [runKB_appendK, runKB_cons] at hrun
+  rw [runKB_appendK, runKB_appendK, runKB_cons]
+  have hXs : (runKB C R P (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.stopped = false := by
+    cases h' : (runKB C R P (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.stopped
+    · rfl
+    · rw [runK_stoppedK C R _ _ _ h', runKB_stoppedK C R Q _ _ h', h'] at hrun
+      exact hrun
+  rw [runK_leaf_put C R i f _ _ hXs, runKB_put C R f _ _ Q (g ∪ c.bits) _ hQD hw] at hrun ⊢
+  have hZ := runKB_mono C R Q (g ∪ c.bits) (g ∪ c.bits) (Finset.Subset.refl _) _ _ hX
+  have hZs : (runKB C R Q (g ∪ c.bits) (runKB C R P (g ∪ c.bits)
+      (stall C Ft c.bits g 1 s))).st.stopped = false := by
+    rw [hZ.1.2.2.1]; exact hrun
+  rw [runK_leaf_put C R i f _ _ hZs]
+  have hfrm := runKB_frm C R Q (g ∪ c.bits) (runKB C R P (g ∪ c.bits) (stall C Ft c.bits g 1 s))
+  have hgt : gateTime C.base (runKB C R Q (g ∪ c.bits) (runKB C R P (g ∪ c.bits)
+      (stall C Ft c.bits g 1 s))).st g ≤
+      gateTime C.base (runKB C R P (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st (g ∪ c.bits) := by
+    rw [gateTime_congr C.base _ _ g fun z hz => hfrm.meas z (Finset.disjoint_left.1 hgQ hz)]
+    exact (gateTime_mono C.base hX.1 (Finset.Subset.refl _)).trans
+      (gateTime_mono C.base (TState.Le.refl _) Finset.subset_union_left)
+  have hsup : f.qubits.sup (runKB C R Q (g ∪ c.bits) (runKB C R P (g ∪ c.bits)
+      (stall C Ft c.bits g 1 s))).st.ready ≤
+      f.qubits.sup (runKB C R P (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st.ready :=
+    Finset.sup_mono_fun fun q hq' => by
+      rw [hfrm.ready q (Finset.disjoint_left.1 hQD.1 hq')]
+      exact hX.1.2.2.2.1 q
+  have he : leafEnd C.base i f g (runKB C R Q (g ∪ c.bits) (runKB C R P (g ∪ c.bits)
+      (stall C Ft c.bits g 1 s))).st ≤
+      leafEnd C.base i f (g ∪ c.bits) (runKB C R P (g ∪ c.bits) (stall C Fs c.bits g 1 s)).st := by
+    unfold leafEnd
+    exact add_le_add (max_le_max hgt hsup) le_rfl
+  exact putB_le R f hZ (fun _ _ => he) he
+
+/-- C1 in the block model for a merged leaf: the side conditions of
+`merge_latency`, plus "the leaf writes no enclosing gate bit and no
+condition bit" (`hw`). -/
+theorem merge_block_leaf (C : BCost) (R : Record) (c : Cond) (i : ℕ) (f : Footprint)
+    (A sA B sB : List Op) (gates : Finset Bit)
+    (hA : ∀ y ∈ sA, f.Disj (Op.fp y))
+    (hB : ∀ y ∈ sB, f.Disj (Op.fp y))
+    (hencA : ∀ y ∈ sA, Disjoint gates (Op.fp y).writes)
+    (hencB : ∀ y ∈ sB, Disjoint gates (Op.fp y).writes)
+    (hw : Disjoint (gates ∪ c.bits) f.writes)
+    (s : BState) (hst : s.st.stopped = false)
+    (hrun : (runK C R (.ite c (A ++ .leaf i f :: sA) (B ++ .leaf i f :: sB)) gates s).st.stopped
+      = false) :
+    (runKB C R [.ite c (A ++ sA) (B ++ sB), .leaf i f] gates s).Le
+      (runK C R (.ite c (A ++ .leaf i f :: sA) (B ++ .leaf i f :: sB)) gates s) := by
+  have hFt : (Op.fp (.ite c (A ++ sA) (B ++ sB))).qubits ⊆
+      (Op.fp (.ite c (A ++ .leaf i f :: sA) (B ++ .leaf i f :: sB))).qubits := by
+    intro q hq
+    simp only [Op.fp, Op.fps, Footprint.union_qubits, fps_append_qubits, Finset.mem_union] at hq ⊢
+    tauto
+  rw [runKB_cons, runKB_cons, runKB_nil, runK_ite C R c _ _ gates s hst,
+    runK_ite C R c _ _ gates s hst]
+  rw [runK_ite C R c _ _ gates s hst] at hrun
+  by_cases hce : c.eval s.st.vals = true
+  · simp only [if_pos hce] at hrun ⊢
+    exact merge_branch_K C R c i f A sA _ _ gates s hFt hA hencA hw hrun
+  · simp only [if_neg hce] at hrun ⊢
+    exact merge_branch_K C R c i f B sB _ _ gates s hFt hB hencB hw hrun
+
 end Qlin

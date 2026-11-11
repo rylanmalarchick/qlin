@@ -78,5 +78,7 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.merge_latency_needs_henc
 #print axioms Qlin.hoist_block_can_delay
 #print axioms Qlin.runK_mono
+#print axioms Qlin.hoist_block_leaf
+#print axioms Qlin.merge_block_leaf
 #print axioms Qlin.TV.checkBlock_sound
 #print axioms Qlin.TV.checkFP_sound

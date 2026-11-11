@@ -883,4 +883,361 @@ theorem merge_block_leaf (C : BCost) (R : Record) (c : Cond) (i : ℕ) (f : Foot
   · simp only [if_neg hce] at hrun ⊢
     exact merge_branch_K C R c i f B sB _ _ gates s hFt hB hencB hw hrun
 
+/-! ### Closure in the block model, for leaf moves
+
+`M0StepsK E P Q`: leaf hoists and leaf merges (with the side conditions of
+`hoist_block_leaf` and `merge_block_leaf`), closed under blocks, if arms,
+loop bodies, switch cases and defaults, and sequences.
+`m0StepsK_latency`: the block replay of `Q` is no later than that of `P`. -/
+
+def NoLaterAtK (C : BCost) (R : Record) (g : Finset Bit) (P Q : List Op) : Prop :=
+  ∀ a b : BState, a.Le b → (runKB C R P g b).st.stopped = false →
+    (runKB C R Q g a).Le (runKB C R P g b)
+
+def NoLaterK (C : BCost) (R : Record) (E : Finset Bit) (P Q : List Op) : Prop :=
+  ∀ g, g ⊆ E → NoLaterAtK C R g P Q
+
+inductive M0StepsK : Finset Bit → List Op → List Op → Prop
+  | hoist (E : Finset Bit) (c : Cond) (i : ℕ) (f : Footprint) (pA A pB B : List Op)
+      (hA : ∀ y ∈ pA, f.Disj (Op.fp y)) (hB : ∀ y ∈ pB, f.Disj (Op.fp y))
+      (hc : Disjoint c.bits f.writes) (henc : Disjoint E f.writes) :
+      M0StepsK E [.ite c (pA ++ .leaf i f :: A) (pB ++ .leaf i f :: B)]
+        [.leaf i f, .ite c (pA ++ A) (pB ++ B)]
+  | merge (E : Finset Bit) (c : Cond) (i : ℕ) (f : Footprint) (A sA B sB : List Op)
+      (hA : ∀ y ∈ sA, f.Disj (Op.fp y)) (hB : ∀ y ∈ sB, f.Disj (Op.fp y))
+      (hencA : ∀ y ∈ sA, Disjoint E (Op.fp y).writes)
+      (hencB : ∀ y ∈ sB, Disjoint E (Op.fp y).writes)
+      (hw : Disjoint (E ∪ c.bits) f.writes) :
+      M0StepsK E [.ite c (A ++ .leaf i f :: sA) (B ++ .leaf i f :: sB)]
+        [.ite c (A ++ sA) (B ++ sB), .leaf i f]
+  | frame {E : Finset Bit} {P Q : List Op} (l1 l2 : List Op) :
+      M0StepsK E P Q → M0StepsK E (l1 ++ P ++ l2) (l1 ++ Q ++ l2)
+  | iteL {E : Finset Bit} {A A' : List Op} (c : Cond) (B : List Op) :
+      M0StepsK (E ∪ c.bits) A A' → M0StepsK E [.ite c A B] [.ite c A' B]
+  | iteR {E : Finset Bit} {B B' : List Op} (c : Cond) (A : List Op) :
+      M0StepsK (E ∪ c.bits) B B' → M0StepsK E [.ite c A B] [.ite c A B']
+  | loop {E : Finset Bit} {body body' : List Op} (K : ℕ) (c : Cond) :
+      M0StepsK (E ∪ c.bits) body body' → M0StepsK E [.loop K body c] [.loop K body' c]
+  | case {E : Finset Bit} {blk blk' : List Op} (G : Finset Bit)
+      (cs1 : List (Assign × List Op)) (v : Assign) (cs2 : List (Assign × List Op))
+      (d : List Op) :
+      M0StepsK (E ∪ G) blk blk' →
+      M0StepsK E [.switch G (cs1 ++ (v, blk) :: cs2) d] [.switch G (cs1 ++ (v, blk') :: cs2) d]
+  | dflt {E : Finset Bit} {d d' : List Op} (G : Finset Bit)
+      (cs : List (Assign × List Op)) :
+      M0StepsK (E ∪ G) d d' → M0StepsK E [.switch G cs d] [.switch G cs d']
+  | refl (E : Finset Bit) (P : List Op) : M0StepsK E P P
+  | trans {E : Finset Bit} {P Q S : List Op} :
+      M0StepsK E P Q → M0StepsK E Q S → M0StepsK E P S
+
+theorem runK_runningK {C : BCost} {R : Record} {o : Op} {g : Finset Bit} {b : BState}
+    (h : (runK C R o g b).st.stopped = false) : b.st.stopped = false := by
+  cases hs : b.st.stopped
+  · rfl
+  · rw [runK_stoppedK C R o g b hs, hs] at h; exact h
+
+theorem runKB_runningK {C : BCost} {R : Record} {l : List Op} {g : Finset Bit} {b : BState}
+    (h : (runKB C R l g b).st.stopped = false) : b.st.stopped = false := by
+  cases hs : b.st.stopped
+  · rfl
+  · rw [runKB_stoppedK C R l g b hs, hs] at h; exact h
+
+theorem runKB_single (C : BCost) (R : Record) (o : Op) (g : Finset Bit) (s : BState) :
+    runKB C R [o] g s = runK C R o g s := by rw [runKB_cons, runKB_nil]
+
+theorem fpsCases_append_qubits : ∀ (cs1 cs2 : List (Assign × List Op)),
+    (Op.fpsCases (cs1 ++ cs2)).qubits = (Op.fpsCases cs1).qubits ∪ (Op.fpsCases cs2).qubits
+  | [], cs2 => by simp [Op.fpsCases, Footprint.empty]
+  | (v, blk) :: cs1, cs2 => by
+    simp only [List.cons_append, Op.fpsCases, Footprint.union_qubits,
+      fpsCases_append_qubits cs1 cs2, Finset.union_assoc]
+
+theorem fp_ite_sub_left (c : Cond) {A A' : List Op} (B : List Op)
+    (h : (Op.fps A').qubits ⊆ (Op.fps A).qubits) :
+    (Op.fp (.ite c A' B)).qubits ⊆ (Op.fp (.ite c A B)).qubits := by
+  intro q hq
+  have h1 : q ∈ (Op.fps A').qubits → q ∈ (Op.fps A).qubits := fun h' => h h'
+  simp only [Op.fp, Footprint.union_qubits, Finset.mem_union] at hq ⊢
+  tauto
+
+theorem fp_ite_sub_right (c : Cond) (A : List Op) {B B' : List Op}
+    (h : (Op.fps B').qubits ⊆ (Op.fps B).qubits) :
+    (Op.fp (.ite c A B')).qubits ⊆ (Op.fp (.ite c A B)).qubits := by
+  intro q hq
+  have h1 : q ∈ (Op.fps B').qubits → q ∈ (Op.fps B).qubits := fun h' => h h'
+  simp only [Op.fp, Footprint.union_qubits, Finset.mem_union] at hq ⊢
+  tauto
+
+theorem fp_loop_sub (K : ℕ) (c : Cond) {body body' : List Op}
+    (h : (Op.fps body').qubits ⊆ (Op.fps body).qubits) :
+    (Op.fp (.loop K body' c)).qubits ⊆ (Op.fp (.loop K body c)).qubits := by
+  intro q hq
+  have h1 : q ∈ (Op.fps body').qubits → q ∈ (Op.fps body).qubits := fun h' => h h'
+  simp only [Op.fp, Footprint.union_qubits, Finset.mem_union] at hq ⊢
+  tauto
+
+theorem fp_switch_sub_case (G : Finset Bit) (cs1 : List (Assign × List Op)) (v : Assign)
+    (cs2 : List (Assign × List Op)) (d : List Op) {blk blk' : List Op}
+    (h : (Op.fps blk').qubits ⊆ (Op.fps blk).qubits) :
+    (Op.fp (.switch G (cs1 ++ (v, blk') :: cs2) d)).qubits ⊆
+      (Op.fp (.switch G (cs1 ++ (v, blk) :: cs2) d)).qubits := by
+  intro q hq
+  have h1 : q ∈ (Op.fps blk').qubits → q ∈ (Op.fps blk).qubits := fun h' => h h'
+  simp only [Op.fp, Footprint.union_qubits, fpsCases_append_qubits, Op.fpsCases,
+    Finset.mem_union] at hq ⊢
+  tauto
+
+theorem fp_switch_sub_dflt (G : Finset Bit) (cs : List (Assign × List Op)) {d d' : List Op}
+    (h : (Op.fps d').qubits ⊆ (Op.fps d).qubits) :
+    (Op.fp (.switch G cs d')).qubits ⊆ (Op.fp (.switch G cs d)).qubits := by
+  intro q hq
+  have h1 : q ∈ (Op.fps d').qubits → q ∈ (Op.fps d).qubits := fun h' => h h'
+  simp only [Op.fp, Footprint.union_qubits, Finset.mem_union] at hq ⊢
+  tauto
+
+/-- The taken arm index does not depend on the case blocks. -/
+theorem armIdx_case (G : Finset Bit) (vals : Assign) (v : Assign) (blk blk' : List Op)
+    (cs2 : List (Assign × List Op)) : ∀ cs1 : List (Assign × List Op),
+    armIdx G vals (cs1 ++ (v, blk') :: cs2) = armIdx G vals (cs1 ++ (v, blk) :: cs2)
+  | [] => by simp only [List.nil_append, armIdx]
+  | (w, b0) :: cs1 => by
+    simp only [List.cons_append, armIdx, armIdx_case G vals v blk blk' cs2 cs1]
+
+/-- A no-later step that keeps the stop flag: a controller step. -/
+theorem loopK_noLaterK (c : Cond) (g : Finset Bit) (f f' : Finset Bit → BState → BState)
+    (stl stl' : BState → BState)
+    (H : ∀ g', g' ⊆ g ∪ c.bits → ∀ a b : BState, a.Le b → (f g' b).st.stopped = false →
+      (f' g' a).Le (f g' b))
+    (Hs : ∀ a b : BState, a.Le b → (stl' a).Le (stl b))
+    (hstl : ∀ s, (stl s).st.stopped = s.st.stopped) :
+    ∀ (k : ℕ) (first : Bool) (a b : BState), a.Le b →
+      (loopK f stl c g k first b).st.stopped = false →
+      (loopK f' stl' c g k first a).Le (loopK f stl c g k first b)
+  | 0, _, _, _, _, h => by simp [loopK] at h
+  | k + 1, first, a, b, hab, h => by
+    have hg : (if first = true then g else g ∪ c.bits) ⊆ g ∪ c.bits := by
+      cases first
+      · exact Finset.Subset.refl _
+      · exact Finset.subset_union_left
+    simp only [loopK] at h ⊢
+    generalize hX : f (if first = true then g else g ∪ c.bits) b = X at h ⊢
+    generalize hY : f' (if first = true then g else g ∪ c.bits) a = Y
+    by_cases hs : X.st.stopped = true
+    · simp [hs] at h
+    · have hs' : X.st.stopped = false := by simpa using hs
+      have hle : Y.Le X := by
+        rw [← hX, ← hY]; exact H _ hg a b hab (by rw [hX]; exact hs')
+      have hsa : Y.st.stopped = false := by rw [hle.1.2.2.1, hs']
+      simp only [hs', hsa, Bool.false_eq_true, if_false] at h ⊢
+      have h2 := Hs _ _ hle
+      have hst2 : (stl X).st.stopped = false := by rw [hstl]; exact hs'
+      have hst2' : (stl' Y).st.stopped = false := by rw [h2.1.2.2.1, hst2]
+      simp only [hst2, hst2', Bool.false_or] at h ⊢
+      rw [h2.1.1]
+      by_cases hc : c.eval (stl X).st.vals = true
+      · rw [if_pos hc, if_pos hc]; exact h2
+      · rw [if_neg hc] at h ⊢
+        rw [if_neg hc]
+        exact loopK_noLaterK c g f f' stl stl' H Hs hstl k false _ _ h2 h
+
+theorem runKCases_caseK (C : BCost) (R : Record) (G : Finset Bit) (d : List Op)
+    (gates : Finset Bit) (v : Assign) (blk blk' : List Op) (cs2 : List (Assign × List Op))
+    (H : NoLaterAtK C R gates blk blk') :
+    ∀ (cs1 : List (Assign × List Op)) (a b : BState), a.Le b →
+      (runKCases C R G (cs1 ++ (v, blk) :: cs2) d gates b).st.stopped = false →
+      (runKCases C R G (cs1 ++ (v, blk') :: cs2) d gates a).Le
+        (runKCases C R G (cs1 ++ (v, blk) :: cs2) d gates b)
+  | [], a, b, hab, h => by
+    simp only [List.nil_append, runKCases, hab.1.1] at h ⊢
+    by_cases hv : agrees G b.st.vals v
+    · rw [if_pos hv] at h
+      rw [if_pos hv, if_pos hv]
+      exact H a b hab h
+    · rw [if_neg hv, if_neg hv]
+      exact runKCases_mono C R G cs2 d gates gates (Finset.Subset.refl _)
+        (fun a' b' h' => runKB_mono C R d gates gates (Finset.Subset.refl _) a' b' h') a b hab
+  | (w, blk0) :: cs1, a, b, hab, h => by
+    simp only [List.cons_append, runKCases, hab.1.1] at h ⊢
+    by_cases hv : agrees G b.st.vals w
+    · rw [if_pos hv, if_pos hv]
+      exact runKB_mono C R blk0 gates gates (Finset.Subset.refl _) a b hab
+    · rw [if_neg hv] at h
+      rw [if_neg hv, if_neg hv]
+      exact runKCases_caseK C R G d gates v blk blk' cs2 H cs1 a b hab h
+
+theorem runKCases_dfltK (C : BCost) (R : Record) (G : Finset Bit) (d d' : List Op)
+    (gates : Finset Bit) (H : NoLaterAtK C R gates d d') :
+    ∀ (cs : List (Assign × List Op)) (a b : BState), a.Le b →
+      (runKCases C R G cs d gates b).st.stopped = false →
+      (runKCases C R G cs d' gates a).Le (runKCases C R G cs d gates b)
+  | [], a, b, hab, h => by
+    simp only [runKCases] at h ⊢
+    exact H a b hab h
+  | (w, blk0) :: cs, a, b, hab, h => by
+    simp only [runKCases, hab.1.1] at h ⊢
+    by_cases hv : agrees G b.st.vals w
+    · rw [if_pos hv, if_pos hv]
+      exact runKB_mono C R blk0 gates gates (Finset.Subset.refl _) a b hab
+    · rw [if_neg hv] at h
+      rw [if_neg hv, if_neg hv]
+      exact runKCases_dfltK C R G d d' gates H cs a b hab h
+
+/-- Leaf M0 steps keep the qubits of a block or shrink them. -/
+theorem m0StepsK_fps {E : Finset Bit} {P Q : List Op} (h : M0StepsK E P Q) :
+    (Op.fps Q).qubits ⊆ (Op.fps P).qubits := by
+  induction h with
+  | hoist E c i f pA A pB B =>
+    intro q hq
+    simp only [Op.fps, Op.fp, Footprint.union_qubits, fps_append_qubits, Finset.mem_union,
+      Footprint.empty, Finset.notMem_empty, or_false, false_or] at hq ⊢
+    tauto
+  | merge E c i f A sA B sB =>
+    intro q hq
+    simp only [Op.fps, Op.fp, Footprint.union_qubits, fps_append_qubits, Finset.mem_union,
+      Footprint.empty, Finset.notMem_empty, or_false, false_or] at hq ⊢
+    tauto
+  | frame l1 l2 _ ih =>
+    intro q hq
+    have h1 : q ∈ _ → q ∈ _ := fun h' => ih h'
+    simp only [fps_append_qubits, Finset.mem_union] at hq ⊢
+    tauto
+  | iteL c B _ ih =>
+    intro q hq
+    simp only [Op.fps, Footprint.union_qubits, Footprint.empty, Finset.mem_union,
+      Finset.notMem_empty, or_false] at hq ⊢
+    exact fp_ite_sub_left c B ih hq
+  | iteR c A _ ih =>
+    intro q hq
+    simp only [Op.fps, Footprint.union_qubits, Footprint.empty, Finset.mem_union,
+      Finset.notMem_empty, or_false] at hq ⊢
+    exact fp_ite_sub_right c A ih hq
+  | loop K c _ ih =>
+    intro q hq
+    simp only [Op.fps, Footprint.union_qubits, Footprint.empty, Finset.mem_union,
+      Finset.notMem_empty, or_false] at hq ⊢
+    exact fp_loop_sub K c ih hq
+  | case G cs1 v cs2 d _ ih =>
+    intro q hq
+    simp only [Op.fps, Footprint.union_qubits, Footprint.empty, Finset.mem_union,
+      Finset.notMem_empty, or_false] at hq ⊢
+    exact fp_switch_sub_case G cs1 v cs2 d ih hq
+  | dflt G cs _ ih =>
+    intro q hq
+    simp only [Op.fps, Footprint.union_qubits, Footprint.empty, Finset.mem_union,
+      Finset.notMem_empty, or_false] at hq ⊢
+    exact fp_switch_sub_dflt G cs ih hq
+  | refl E P => exact Finset.Subset.refl _
+  | trans _ _ ih1 ih2 => exact ih2.trans ih1
+
+/-- Closure of C1 in the block model, for leaf moves. -/
+theorem m0StepsK_latency (C : BCost) (R : Record) {E : Finset Bit} {P Q : List Op}
+    (h : M0StepsK E P Q) : NoLaterK C R E P Q := by
+  induction h with
+  | hoist E c i f pA A pB B hA hB hc henc =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    have key := hoist_block_leaf C R c i f pA A pB B g hA hB hc
+      (Finset.disjoint_of_subset_left hg henc) b (runK_runningK hrun) hrun
+    rw [runKB_single]
+    exact (runKB_mono C R _ g g (Finset.Subset.refl _) a b hab).trans key
+  | merge E c i f A sA B sB hA hB hencA hencB hw =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    have key := merge_block_leaf C R c i f A sA B sB g hA hB
+      (fun y hy => Finset.disjoint_of_subset_left hg (hencA y hy))
+      (fun y hy => Finset.disjoint_of_subset_left hg (hencB y hy))
+      (Finset.disjoint_of_subset_left (Finset.union_subset_union hg (Finset.Subset.refl _)) hw)
+      b (runK_runningK hrun) hrun
+    rw [runKB_single]
+    exact (runKB_mono C R _ g g (Finset.Subset.refl _) a b hab).trans key
+  | frame l1 l2 _ ih =>
+    intro g hg a b hab hrun
+    rw [runKB_appendK, runKB_appendK] at hrun
+    rw [runKB_appendK, runKB_appendK, runKB_appendK, runKB_appendK]
+    have h1 := runKB_mono C R l1 g g (Finset.Subset.refl _) a b hab
+    exact runKB_mono C R l2 g g (Finset.Subset.refl _) _ _
+      (ih g hg _ _ h1 (runKB_runningK hrun))
+  | @iteL E A A' c B h ih =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    rw [runKB_single, runKB_single]
+    have hb := runK_runningK hrun
+    have ha : a.st.stopped = false := by rw [hab.1.2.2.1, hb]
+    have hgc : g ∪ c.bits ⊆ E ∪ c.bits := Finset.union_subset_union hg (Finset.Subset.refl _)
+    have hst := (stall_mono C (Op.fp (.ite c A' B)) c.bits (Finset.Subset.refl g) 1 hab).trans
+      (stall_sub_le C _ _ c.bits g 1 b (fp_ite_sub_left c B (m0StepsK_fps h)))
+    rw [runK_ite C R c A B g b hb] at hrun ⊢
+    rw [runK_ite C R c A' B g a ha, hab.1.1]
+    by_cases hce : c.eval b.st.vals = true
+    · simp only [if_pos hce] at hrun ⊢
+      exact ih _ hgc _ _ hst hrun
+    · simp only [if_neg hce] at hrun ⊢
+      exact runKB_mono C R B _ _ (Finset.Subset.refl _) _ _ hst
+  | @iteR E B B' c A h ih =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    rw [runKB_single, runKB_single]
+    have hb := runK_runningK hrun
+    have ha : a.st.stopped = false := by rw [hab.1.2.2.1, hb]
+    have hgc : g ∪ c.bits ⊆ E ∪ c.bits := Finset.union_subset_union hg (Finset.Subset.refl _)
+    have hst := (stall_mono C (Op.fp (.ite c A B')) c.bits (Finset.Subset.refl g) 1 hab).trans
+      (stall_sub_le C _ _ c.bits g 1 b (fp_ite_sub_right c A (m0StepsK_fps h)))
+    rw [runK_ite C R c A B g b hb] at hrun ⊢
+    rw [runK_ite C R c A B' g a ha, hab.1.1]
+    by_cases hce : c.eval b.st.vals = true
+    · simp only [if_pos hce] at hrun ⊢
+      exact runKB_mono C R A _ _ (Finset.Subset.refl _) _ _ hst
+    · simp only [if_neg hce] at hrun ⊢
+      exact ih _ hgc _ _ hst hrun
+  | @loop E body body' K c h ih =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    rw [runKB_single, runKB_single]
+    have hb := runK_runningK hrun
+    have ha : a.st.stopped = false := by rw [hab.1.2.2.1, hb]
+    have hFq := fp_loop_sub K c (m0StepsK_fps h)
+    simp only [runK, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    exact loopK_noLaterK c g _ _ _ _
+      (fun g' hg' a' b' hab' h' =>
+        ih g' (hg'.trans (Finset.union_subset_union hg (Finset.Subset.refl _))) a' b' hab' h')
+      (fun a' b' h' => (stall_mono C _ c.bits (Finset.Subset.refl g) 1 h').trans
+        (stall_sub_le C _ _ c.bits g 1 b' hFq))
+      (fun _ => rfl) K true a b hab hrun
+  | @case E blk blk' G cs1 v cs2 d h ih =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    rw [runKB_single, runKB_single]
+    have hb := runK_runningK hrun
+    have ha : a.st.stopped = false := by rw [hab.1.2.2.1, hb]
+    have hn : C.dec G.card (cs1 ++ (v, blk') :: cs2).length
+          (armIdx G a.st.vals (cs1 ++ (v, blk') :: cs2)) =
+        C.dec G.card (cs1 ++ (v, blk) :: cs2).length
+          (armIdx G b.st.vals (cs1 ++ (v, blk) :: cs2)) := by
+      rw [armIdx_case G a.st.vals v blk blk' cs2 cs1, hab.1.1]
+      simp
+    simp only [runK, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    rw [hn]
+    exact runKCases_caseK C R G d _ v blk blk' cs2
+      (ih _ (Finset.union_subset_union hg (Finset.Subset.refl _))) cs1 _ _
+      ((stall_mono C _ G (Finset.Subset.refl g) _ hab).trans
+        (stall_sub_le C _ _ G g _ b (fp_switch_sub_case G cs1 v cs2 d (m0StepsK_fps h)))) hrun
+  | @dflt E d d' G cs h ih =>
+    intro g hg a b hab hrun
+    rw [runKB_single] at hrun
+    rw [runKB_single, runKB_single]
+    have hb := runK_runningK hrun
+    have ha : a.st.stopped = false := by rw [hab.1.2.2.1, hb]
+    simp only [runK, hb, ha, Bool.false_eq_true, if_false] at hrun ⊢
+    rw [hab.1.1]
+    exact runKCases_dfltK C R G d d' _
+      (ih _ (Finset.union_subset_union hg (Finset.Subset.refl _))) cs _ _
+      ((stall_mono C _ G (Finset.Subset.refl g) _ hab).trans
+        (stall_sub_le C _ _ G g _ b (fp_switch_sub_dflt G cs (m0StepsK_fps h)))) hrun
+  | refl E P => exact fun g _ a b hab _ => runKB_mono C R P g g (Finset.Subset.refl _) a b hab
+  | trans _ _ ih1 ih2 =>
+    intro g hg a b hab hrun
+    have h1 := ih1 g hg b b (BState.Le.refl b) hrun
+    have h2 := ih2 g hg a b hab (by rw [h1.1.2.2.1]; exact hrun)
+    exact h2.trans h1
+
 end Qlin

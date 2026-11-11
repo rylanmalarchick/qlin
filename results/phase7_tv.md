@@ -11,6 +11,8 @@ itself, not this run.
 - 976 of 976 jobs checked
 - M0 jobs (semantics and latency): 66
 - Jobs not passing: 0
+- 66 of 66 M0 jobs move leaves only (checkLatLeaf; a moved branch can add latency in the
+  block model, notes/block-counterexample)
 
 
 ## Skipped

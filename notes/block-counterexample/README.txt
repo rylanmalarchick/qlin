@@ -18,6 +18,11 @@ wait for the controller.
 
 Scope. The ideal model has no controller, and there C1 holds
 (lean/Qlin/Latency.lean). In the block model C1 fails for a hoisted
-branch: lean/Qlin/Block.lean, theorem hoist_block_can_delay. No benchmark
-shows it: M0 is never slower than the source in results/phase8_switch.csv
-(650 rows). bench/test_block_counterexample.py pins the numbers above.
+branch: lean/Qlin/Block.lean, theorem hoist_block_can_delay. For leaf
+moves C1 holds in the block model (lean/Qlin/BlockLeaf.lean:
+hoist_block_leaf, merge_block_leaf, and the closure m0StepsK_latency; a
+merged leaf must also write no enclosing gate bit and no condition bit).
+The checker checkLatLeaf (lean/Qlin/CheckLatency.lean, sound by
+checkLatLeaf_soundK) accepts all 66 benchmark M0 outputs
+(results/phase7_tv.md). bench/test_block_counterexample.py pins the
+numbers above.

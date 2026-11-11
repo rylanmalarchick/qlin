@@ -81,5 +81,6 @@ only on propext, Classical.choice, and Quot.sound. -/
 #print axioms Qlin.hoist_block_leaf
 #print axioms Qlin.merge_block_leaf
 #print axioms Qlin.m0StepsK_latency
+#print axioms Qlin.TV.checkLatLeaf_soundK
 #print axioms Qlin.TV.checkBlock_sound
 #print axioms Qlin.TV.checkFP_sound

@@ -5,7 +5,8 @@ import Qlin.CheckLatency
 # qlincheck: run the translation-validation checkers on exported jobs
 
 Run: `lake env lean --run QlinCheck.lean JOBS.json` (from `lean/`).
-`--leaf-moves JOBS.json` reports which M0 jobs move leaves only.
+`--leaf-moves JOBS.json` reports which M0 jobs `checkLatLeaf` accepts
+(block-model latency, `checkLatLeaf_soundK`).
 
 `JOBS.json` comes from `qlin tv-export`. Each job names a source and a
 target program. Kind `m0` runs `checkBlock` (semantics) and `checkLat`
@@ -82,8 +83,9 @@ def runJob (j : Json) : Except String (String × Bool) := do
   | "fp" => return (name, checkFP FUEL src tgt)
   | k => throw s!"unknown kind {k}"
 
-/-- `--leaf-moves`: for each M0 job, does its derivation move leaves only
-(`checkLatLeaf`)? A report, not a pass or fail gate. -/
+/-- `--leaf-moves`: for each M0 job, does `checkLatLeaf` accept it (leaf
+moves only)? `checkLatLeaf_soundK` covers an accepted job in the block
+model. A report, not a pass or fail gate. -/
 def leafMoves (path : String) : IO UInt32 := do
   let text ← IO.FS.readFile path
   let json ← IO.ofExcept (Json.parse text)

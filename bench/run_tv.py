@@ -66,8 +66,9 @@ def main() -> int:
         f"- {lines[-1]}",
         f"- M0 jobs (semantics and latency): {sum(j['kind'] == 'm0' for j in jobs)}",
         f"- Jobs not passing: {len(fails)}",
-        f"- {leaf[-1]} (checkLatLeaf; a moved branch can add latency in the",
-        "  block model, notes/block-counterexample)",
+        f"- {leaf[-1]} (checkLatLeaf; checkLatLeaf_soundK covers a passing",
+        "  job in the block model; a moved branch can add latency there,",
+        "  notes/block-counterexample)",
         "",
     ]
     out += [f"  - {ln}" for ln in leaf[:-1]]

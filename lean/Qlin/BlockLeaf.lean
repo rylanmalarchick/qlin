@@ -404,22 +404,24 @@ time of every set of gate bits inside `g` only grows. -/
 structure Frm (C : Cost) (F : Footprint) (g : Finset Bit) (a b : TState) : Prop where
   ready : ∀ q, q ∉ F.qubits → b.ready q = a.ready q
   meas : ∀ z, z ∉ F.writes → b.measEnd z = a.measEnd z
+  vals : ∀ z, z ∉ F.writes → b.vals z = a.vals z
   grow : ∀ g0, g0 ⊆ g → gateTime C a g0 ≤ gateTime C b g0
 
 theorem Frm.refl (C : Cost) (F : Footprint) (g : Finset Bit) (a : TState) : Frm C F g a a :=
-  ⟨fun _ _ => rfl, fun _ _ => rfl, fun _ _ => le_rfl⟩
+  ⟨fun _ _ => rfl, fun _ _ => rfl, fun _ _ => rfl, fun _ _ => le_rfl⟩
 
 theorem Frm.trans {C : Cost} {F : Footprint} {g : Finset Bit} {a b c : TState}
     (h1 : Frm C F g a b) (h2 : Frm C F g b c) : Frm C F g a c :=
   ⟨fun q hq => (h2.ready q hq).trans (h1.ready q hq),
     fun z hz => (h2.meas z hz).trans (h1.meas z hz),
+    fun z hz => (h2.vals z hz).trans (h1.vals z hz),
     fun g0 hg0 => (h1.grow g0 hg0).trans (h2.grow g0 hg0)⟩
 
 theorem Frm.mono {C : Cost} {F F' : Footprint} {g g' : Finset Bit} {a b : TState}
     (h : Frm C F g a b) (hq : F.qubits ⊆ F'.qubits) (hw : F.writes ⊆ F'.writes) (hg : g' ⊆ g) :
     Frm C F' g' a b :=
   ⟨fun q hq' => h.ready q fun h' => hq' (hq h'), fun z hz => h.meas z fun h' => hz (hw h'),
-    fun g0 hg0 => h.grow g0 (hg0.trans hg)⟩
+    fun z hz => h.vals z fun h' => hz (hw h'), fun g0 hg0 => h.grow g0 (hg0.trans hg)⟩
 
 /-- The gate time of `g0` when `measEnd` agrees on `g0`. -/
 theorem gateTime_congr (C : Cost) (a b : TState) (g0 : Finset Bit)
@@ -435,7 +437,8 @@ theorem leafT_frm (C : Cost) (R : Record) (i : ℕ) (f : Footprint) (g : Finset 
     exact Frm.refl C f g st
   · have hs0 : st.stopped = false := by simpa using hs
     rw [leafT_eq_put C R i f g st hs0]
-    refine ⟨fun q hq => by simp [put, hq], fun z hz => by simp [put, hz], fun g0 hg0 => ?_⟩
+    refine ⟨fun q hq => by simp [put, hq], fun z hz => by simp [put, hz],
+      fun z hz => by simp [put, hz], fun g0 hg0 => ?_⟩
     unfold gateTime
     refine Finset.sup_le fun z hz => ?_
     refine le_trans ?_ (Finset.le_sup (f := fun z =>
@@ -458,7 +461,7 @@ theorem leafT_frm (C : Cost) (R : Record) (i : ℕ) (f : Footprint) (g : Finset 
 
 theorem stall_frm (C : BCost) (F : Footprint) (bits g : Finset Bit) (n : ℕ) (g' : Finset Bit)
     (s : BState) : Frm C.base F g' s.st (stall C F bits g n s).st :=
-  ⟨fun q hq => by simp [stall, hq], fun _ _ => rfl,
+  ⟨fun q hq => by simp [stall, hq], fun _ _ => rfl, fun _ _ => rfl,
     fun g0 _ => le_of_eq (gateTime_congr C.base _ _ g0 fun _ _ => rfl).symm⟩
 
 theorem loopK_frm (C : Cost) (F : Footprint) (c : Cond) (g : Finset Bit)
@@ -468,7 +471,7 @@ theorem loopK_frm (C : Cost) (F : Footprint) (c : Cond) (g : Finset Bit)
     ∀ (k : ℕ) (first : Bool) (s : BState), Frm C F g s.st (loopK body stl c g k first s).st
   | 0, _, s => by
     simp only [loopK]
-    exact ⟨fun _ _ => rfl, fun _ _ => rfl,
+    exact ⟨fun _ _ => rfl, fun _ _ => rfl, fun _ _ => rfl,
       fun g0 _ => le_of_eq (gateTime_congr C _ _ g0 fun _ _ => rfl).symm⟩
   | k + 1, first, s => by
     have hg' : g ⊆ (if first = true then g else g ∪ c.bits) := by

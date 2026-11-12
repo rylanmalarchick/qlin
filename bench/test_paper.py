@@ -119,6 +119,16 @@ def mismatches(out: Path) -> list[str]:
                  f"t=4: {nums['nFullRepFour']}% ({nums['nFullRepFourCases']})"):
         if want not in budget:
             bad.append(f"full budget {want}")
+    ns = (ROOT / "results" / "phase8_noise.md").read_text()
+    qick = ns[ns.index("## qick"):]
+    counts = next(l for l in qick.splitlines() if l.startswith("| programs |"))
+    if {c.strip() for c in counts.split("|")[2:-1]} != {nums["nNoiseQickTenLo"], nums["nNoiseQickTenHi"]}:
+        bad.append("noise qick counts")
+    rep11 = next(l for l in qick.splitlines() if l.startswith("| qec/repetition11_0_noisy |"))
+    cells = [c.strip() for c in rep11.split("|")[3:-1]]
+    if (not cells[0].endswith(f"; {nums['nNoiseRepTwoLoP']}%")
+            or not cells[-1].endswith(f"; {nums['nNoiseRepTwoHiP']}%")):
+        bad.append("noise rep11 t=2")
     return bad
 
 
@@ -207,3 +217,20 @@ def test_a_planted_wrong_full_switch_value_is_caught(tmp_path):
     out = tmp_path / "gen"
     emit(out, res)
     assert mismatches(out) == ["full steane margin"]
+
+
+def test_a_planted_wrong_noise_value_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "phase8_noise.csv"
+    rows = list(csv.DictReader(open(p)))
+    for r in rows:
+        if (r["benchmark"], r["class"], r["p"]) == ("qec/repetition11_0_noisy", "qick", "0.1"):
+            r["gain_t2"] = "0.5"
+    with open(p, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    out = tmp_path / "gen"
+    emit(out, res)
+    assert mismatches(out) == ["noise rep11 t=2"]

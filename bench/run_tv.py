@@ -4,7 +4,8 @@ Run: cargo build --release, then
      uv run --project bench python bench/run_tv.py
 
 For each benchmark: `qlin tv-export` writes the M0 job (source to normal
-form) and the fast-path jobs (t = 0, 1, 2), once from the normal form and
+form) and the fast-path jobs (t = 0 to MAX_T, the budgets of the phase 8
+sweep, under the same size limit), once from the normal form and
 once from its Pauli sink. lean/QlinCheck.lean runs the checkers on all
 jobs. A passing job is covered by checkBlock_sound or checkFP_sound.
 Programs whose records cannot be computed (non-Clifford past 12 qubits)
@@ -18,6 +19,7 @@ import subprocess
 import sys
 
 from qlin_qiskit import ROOT, qlin
+from run_phase3 import MAX_T
 
 RESULTS = ROOT / "results"
 JOBS = ROOT / "target" / "tv_jobs.json"
@@ -32,7 +34,7 @@ def main() -> int:
                  if path.stem.endswith("_noisy") else [])
         for sink in ([], ["--sink"]):
             try:
-                out = qlin("tv-export", "--t", "2", *sink, *noise, bench)
+                out = qlin("tv-export", "--t", str(MAX_T), *sink, *noise, bench)
             except RuntimeError as e:
                 skipped.append(f"{bench} {' '.join(sink)}: {str(e).splitlines()[-1][:120]}")
                 continue
@@ -47,6 +49,9 @@ def main() -> int:
                          cwd=ROOT / "lean", capture_output=True, text=True, check=False)
     lines = run.stdout.strip().splitlines()
     fails = [ln for ln in lines if not ln.startswith("ok")][:-1]
+    leaf = subprocess.run(["lake", "env", "lean", "--run", "QlinCheck.lean", "--leaf-moves",
+                           str(JOBS)], cwd=ROOT / "lean", capture_output=True, text=True,
+                          check=False).stdout.strip().splitlines()
     out = [
         "# Phase 7.3 results: translation validation in Lean",
         "",
@@ -54,15 +59,19 @@ def main() -> int:
         "lean/Qlin/CheckLatency.lean. A job source to M0 normal form passes only",
         "if checkBlock (semantics) and checkLat (latency, ideal replay model)",
         "both accept. checkFP checks normal form (or its sink) to fast path, for",
-        "t = 0, 1, 2. checkBlock_sound, checkLat_sound, and checkFP_sound cover a",
+        f"t = 0 to {MAX_T}. checkBlock_sound, checkLat_sound, and checkFP_sound cover a",
         "passing job (standard axioms only). Simulation checks the sink step",
         "itself, not this run.",
         "",
         f"- {lines[-1]}",
         f"- M0 jobs (semantics and latency): {sum(j['kind'] == 'm0' for j in jobs)}",
         f"- Jobs not passing: {len(fails)}",
+        f"- {leaf[-1]} (checkLatLeaf; checkLatLeaf_soundK covers a passing",
+        "  job in the block model; a moved branch can add latency there,",
+        "  notes/block-counterexample)",
         "",
     ]
+    out += [f"  - {ln}" for ln in leaf[:-1]]
     out += [f"  - {f}" for f in fails]
     out += ["", "## Skipped", ""] + [f"- {s}" for s in skipped]
     (RESULTS / "phase7_tv.md").write_text("\n".join(out) + "\n")

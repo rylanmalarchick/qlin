@@ -1,0 +1,26 @@
+# C1 does not hold in the block model when the hoisted op is a branch.
+# Both arms hold `if c2 { x q3 }`, and c2 is known late. M0 hoists it. The
+# controller then decides it first, and the outer branch (with `reset q4`)
+# waits. See README.txt.
+qubits 5
+bits 3
+h q0
+measure q0 -> c0
+h q2
+h q2
+h q2
+h q2
+h q2
+h q2
+h q2
+measure q2 -> c2
+if c0 {
+  reset q4
+  if c2 {
+    x q3
+  }
+} else {
+  if c2 {
+    x q3
+  }
+}

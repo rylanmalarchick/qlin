@@ -129,6 +129,19 @@ def mismatches(out: Path) -> list[str]:
     if (not cells[0].endswith(f"; {nums['nNoiseRepTwoLoP']}%")
             or not cells[-1].endswith(f"; {nums['nNoiseRepTwoHiP']}%")):
         bad.append("noise rep11 t=2")
+    sw = {(r["benchmark"], r["class"], r["switch"]): r
+          for r in csv.DictReader(open(ROOT / "results" / "phase8_switch.csv"))}
+    budget_rows = body((out / "tables" / "fastpath_budget.tex").read_text())
+    if len(budget_rows) != 8:
+        bad.append(f"budget rows {len(budget_rows)}")
+    for r in budget_rows:
+        cls, swc = {"0~ns": ("none", "table"), "QICK, tree": ("qick", "tree")}[r[1]]
+        src = sw[(r[0], cls, swc)]
+        for t, cell in enumerate(r[2:]):
+            v = src[f"fast_t{t}"]
+            want = "--" if not v else f"{float(v) / float(src['source']):.2f}"
+            if cell != want:
+                bad.append(f"budget {r[0]} {r[1]} t={t}: {cell} != {want}")
     return bad
 
 
@@ -234,3 +247,22 @@ def test_a_planted_wrong_noise_value_is_caught(tmp_path):
     out = tmp_path / "gen"
     emit(out, res)
     assert mismatches(out) == ["noise rep11 t=2"]
+
+
+def test_a_planted_wrong_budget_latency_is_caught(tmp_path):
+    res = tmp_path / "results"
+    shutil.copytree(ROOT / "results", res)
+    p = res / "phase8_switch.csv"
+    lines = p.read_text().splitlines()
+    col = {k: i for i, k in enumerate(lines[0].split(","))}
+    for i, line in enumerate(lines[1:], 1):
+        f = line.split(",")
+        if (f[col["benchmark"]], f[col["class"]], f[col["switch"]]) == (
+                "dynamarq/repetition5_0_noisy", "none", "table"):
+            f[col["fast_t2"]] = str(2 * float(f[col["source"]]))
+            lines[i] = ",".join(f)
+    p.write_text("\n".join(lines) + "\n")
+    out = tmp_path / "gen"
+    emit(out, res)
+    bad = mismatches(out)
+    assert len(bad) == 1 and bad[0].startswith("budget dynamarq/repetition5_0_noisy 0~ns t=2: 2.00 != ")

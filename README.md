@@ -7,6 +7,12 @@ measurement outcomes, and keeps the unchanged program as the fallback for
 the rest. It also chooses which classically controlled branches to replace
 by coherent control ("defer"), against a latency cost model.
 
+## Paper
+
+R. Malarchick, "Latency-Preserving Rewrites and Translation Validation for
+Dynamic Quantum Circuits", [arXiv:2611.19618](https://arxiv.org/abs/2611.19618)
+(2026).
+
 ## Build and test
 
 Requires Rust 1.85 or later.
